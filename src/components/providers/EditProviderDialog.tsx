@@ -66,9 +66,18 @@ export function EditProviderDialog({
         return;
       }
 
-      // OpenCode uses additive mode - each provider's config is stored independently in DB
-      // Reading live config would return the full opencode.json (with $schema, provider, mcp etc.)
-      // instead of just the provider fragment, causing incorrect nested structure on save
+      // Codex lite must never prefill the edit form from live config.toml.
+      // The live file is user-owned; reading it here would pull arbitrary user
+      // TOML into the provider snapshot and risk saving it back later.
+      if (appId === "codex") {
+        if (!cancelled) {
+          setLiveSettings(null);
+          setHasLoadedLive(true);
+        }
+        return;
+      }
+
+      // OpenCode uses additive mode - each provider's config is stored independently in DB.
       if (appId === "opencode") {
         if (!cancelled) {
           setLiveSettings(null);

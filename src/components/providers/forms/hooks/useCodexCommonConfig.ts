@@ -20,8 +20,8 @@ interface UseCodexCommonConfigProps {
   };
   initialEnabled?: boolean;
   selectedPresetId?: string;
+  enabled?: boolean;
 }
-
 /**
  * 管理 Codex 通用配置片段 (TOML 格式)
  * 从 config.json 读取和保存，支持从 localStorage 平滑迁移
@@ -32,6 +32,7 @@ export function useCodexCommonConfig({
   initialData,
   initialEnabled,
   selectedPresetId,
+  enabled = true,
 }: UseCodexCommonConfigProps) {
   const { t } = useTranslation();
   const [useCommonConfig, setUseCommonConfig] = useState(false);
@@ -79,8 +80,12 @@ export function useCodexCommonConfig({
     }
   }, []);
 
-  // 初始化：从 config.json 加载，支持从 localStorage 迁移
   useEffect(() => {
+    if (!enabled) {
+      setIsLoading(false);
+      return;
+    }
+
     let mounted = true;
 
     const loadSnippet = async () => {
@@ -129,11 +134,12 @@ export function useCodexCommonConfig({
     return () => {
       mounted = false;
     };
-  }, []);
+  }, [enabled]);
 
   // 初始化时检查通用配置片段（编辑模式）
   useEffect(() => {
     if (
+      !enabled ||
       !initialData?.settingsConfig ||
       isLoading ||
       hasInitializedEditMode.current
@@ -203,7 +209,7 @@ export function useCodexCommonConfig({
 
   // 新建模式：如果通用配置片段存在且有效，默认启用
   useEffect(() => {
-    if (initialData || isLoading || hasInitializedNewMode.current) {
+    if (!enabled || initialData || isLoading || hasInitializedNewMode.current) {
       return;
     }
 

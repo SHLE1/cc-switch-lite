@@ -52,10 +52,7 @@ import {
   hasApiKeyField,
 } from "@/utils/providerConfigUtils";
 import { mergeProviderMeta } from "@/utils/providerMetaUtils";
-import {
-  extractCodexWireApi,
-  setCodexWireApi,
-} from "@/utils/providerConfigUtils";
+import { extractCodexWireApi } from "@/utils/providerConfigUtils";
 import { isNonNegativeDecimalString } from "@/types/usage";
 import { getCodexCustomTemplate } from "@/config/codexTemplates";
 import CodexConfigEditor from "./CodexConfigEditor";
@@ -111,6 +108,13 @@ import { HERMES_DEFAULT_CONFIG } from "./hooks/useHermesFormState";
 import { resolveManagedAccountId } from "@/lib/authBinding";
 import { useOpenClawLiveProviderIds } from "@/hooks/useOpenClaw";
 import { useHermesLiveProviderIds } from "@/hooks/useHermes";
+const tomlString = (value: string) =>
+  `"${value.replace(/\\/g, "\\\\").replace(/"/g, '\\"')}"`;
+
+const buildCodexPatchConfig = (baseUrl: string) => {
+  const trimmed = baseUrl.trim();
+  return trimmed ? `openai_base_url = ${tomlString(trimmed)}\n` : "";
+};
 
 type PresetEntry = {
   id: string;
@@ -440,13 +444,10 @@ function ProviderFormFull({
     codexConfig,
     codexApiKey,
     codexBaseUrl,
-    codexModelName,
     codexAuthError,
     setCodexAuth,
-    setCodexConfig,
     handleCodexApiKeyChange,
     handleCodexBaseUrlChange,
-    handleCodexModelNameChange,
     handleCodexConfigChange: originalHandleCodexConfigChange,
     resetCodexConfig,
   } = useCodexConfigState({ initialData });
@@ -470,8 +471,7 @@ function ProviderFormFull({
       );
     });
 
-  const { configError: codexConfigError, debouncedValidate } =
-    useCodexTomlValidation();
+  const { debouncedValidate } = useCodexTomlValidation();
 
   const handleCodexConfigChange = useCallback(
     (value: string) => {
@@ -485,17 +485,9 @@ function ProviderFormFull({
     [originalHandleCodexConfigChange, debouncedValidate],
   );
 
-  const handleCodexApiFormatChange = useCallback(
-    (format: CodexApiFormat) => {
-      setLocalCodexApiFormat(format);
-      setCodexConfig((prev) => {
-        const updated = setCodexWireApi(prev, "responses");
-        debouncedValidate(updated);
-        return updated;
-      });
-    },
-    [setCodexConfig, debouncedValidate],
-  );
+  const handleCodexApiFormatChange = useCallback((format: CodexApiFormat) => {
+    setLocalCodexApiFormat(format);
+  }, []);
 
   useEffect(() => {
     if (appId === "codex" && !initialData && selectedPresetId === "custom") {
@@ -595,20 +587,10 @@ function ProviderFormFull({
 
   const {
     useCommonConfig: useCodexCommonConfigFlag,
-    commonConfigSnippet: codexCommonConfigSnippet,
-    commonConfigError: codexCommonConfigError,
-    handleCommonConfigToggle: handleCodexCommonConfigToggle,
-    handleCommonConfigSnippetChange: handleCodexCommonConfigSnippetChange,
-    isExtracting: isCodexExtracting,
-    handleExtract: handleCodexExtract,
-    clearCommonConfigError: clearCodexCommonConfigError,
   } = useCodexCommonConfig({
     codexConfig,
     onConfigChange: handleCodexConfigChange,
-    initialData: appId === "codex" ? initialData : undefined,
-    initialEnabled:
-      appId === "codex" ? initialData?.meta?.commonConfigEnabled : undefined,
-    selectedPresetId: selectedPresetId ?? undefined,
+    enabled: false,
   });
 
   const {
@@ -1109,13 +1091,9 @@ function ProviderFormFull({
     if (appId === "codex") {
       try {
         const authJson = JSON.parse(codexAuth);
-        const normalizedCodexConfig =
-          category !== "official" && (codexConfig ?? "").trim()
-            ? setCodexWireApi(codexConfig ?? "", "responses")
-            : (codexConfig ?? "");
         const configObj = {
           auth: authJson,
-          config: normalizedCodexConfig,
+          config: buildCodexPatchConfig(codexBaseUrl),
         };
         settingsConfig = JSON.stringify(configObj);
       } catch (err) {
@@ -1937,9 +1915,7 @@ function ProviderFormFull({
               onAutoSelectChange={setEndpointAutoSelect}
               apiFormat={localCodexApiFormat}
               onApiFormatChange={handleCodexApiFormatChange}
-              shouldShowModelField={category !== "official"}
-              modelName={codexModelName}
-              onModelNameChange={handleCodexModelNameChange}
+              shouldShowModelField={false}
               speedTestEndpoints={speedTestEndpoints}
             />
           )}
@@ -2059,26 +2035,13 @@ function ProviderFormFull({
             />
           )}
 
-          {/* 配置编辑器：Codex、Claude、Gemini 分别使用不同的编辑器 */}
+          {/* 配置编辑器：Codex lite 只允许编辑 auth.json；config.toml 只由后端修补 base URL 行。 */}
           {appId === "codex" ? (
             <>
               <CodexConfigEditor
                 authValue={codexAuth}
-                configValue={codexConfig}
                 onAuthChange={setCodexAuth}
-                onConfigChange={handleCodexConfigChange}
-                useCommonConfig={useCodexCommonConfigFlag}
-                onCommonConfigToggle={handleCodexCommonConfigToggle}
-                commonConfigSnippet={codexCommonConfigSnippet}
-                onCommonConfigSnippetChange={
-                  handleCodexCommonConfigSnippetChange
-                }
-                onCommonConfigErrorClear={clearCodexCommonConfigError}
-                commonConfigError={codexCommonConfigError}
                 authError={codexAuthError}
-                configError={codexConfigError}
-                onExtract={handleCodexExtract}
-                isExtracting={isCodexExtracting}
               />
               {settingsConfigErrorField}
             </>
