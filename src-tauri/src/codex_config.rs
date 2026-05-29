@@ -77,11 +77,14 @@ pub fn delete_codex_provider_config(
     Ok(())
 }
 
-/// 原子写 Codex 的 `auth.json`，并且只对 `config.toml` 的 `openai_base_url` 做最小修改。
+/// 原子写 Codex 的 `auth.json`，并对 `config.toml` 执行 auth-switch 风格的最小行级补丁。
 ///
-/// cc-switch 不再托管完整 `config.toml`：provider 配置里的 TOML 仅作为
-/// base URL 的来源。切换 API profile 时写入/替换一行带 managed marker 的
-/// `openai_base_url`；切回 OAuth/auth.json profile 时只注释掉该 managed 行。
+/// 这是 lite 版唯一允许的 Codex live 写入语义：
+/// - `auth.json` 仍由我们原子替换；
+/// - `config.toml` 永远不按 provider 快照整体写入、恢复或删除；
+/// - provider 配置文本只作为 base URL 输入源；
+/// - 有 base URL 时只设置顶层 `openai_base_url = "..." # cc-switch managed`；
+/// - 没有 base URL 时只注释掉我们自己管理的那一行。
 pub fn write_codex_live_atomic(
     auth: &Value,
     config_text_opt: Option<&str>,
@@ -100,13 +103,7 @@ pub fn write_codex_live_atomic(
 
     write_json_file(&auth_path, auth)?;
 
-    let base_url = config_text_opt.and_then(extract_openai_base_url_for_live_patch);
-    let patch_result = match base_url.as_deref() {
-        Some(url) => enable_codex_openai_base_url(url),
-        None => disable_codex_openai_base_url(),
-    };
-
-    if let Err(e) = patch_result {
+    if let Err(e) = patch_codex_openai_base_url_from_config_text(config_text_opt) {
         if let Some(bytes) = old_auth {
             let _ = atomic_write(&auth_path, &bytes);
         } else {
@@ -125,6 +122,15 @@ pub fn read_codex_config_text() -> Result<String, AppError> {
         std::fs::read_to_string(&path).map_err(|e| AppError::io(&path, e))
     } else {
         Ok(String::new())
+    }
+}
+
+pub fn patch_codex_openai_base_url_from_config_text(
+    config_text_opt: Option<&str>,
+) -> Result<(), AppError> {
+    match config_text_opt.and_then(extract_openai_base_url_for_live_patch).as_deref() {
+        Some(url) => enable_codex_openai_base_url(url),
+        None => disable_codex_openai_base_url(),
     }
 }
 
@@ -155,32 +161,70 @@ pub fn disable_codex_openai_base_url() -> Result<(), AppError> {
 }
 
 fn extract_openai_base_url_for_live_patch(config_text: &str) -> Option<String> {
-    let parsed = config_text.parse::<DocumentMut>().ok()?;
-    if let Some(value) = parsed
-        .get(OPENAI_BASE_URL_KEY)
-        .and_then(|item| item.as_str())
-        .map(str::trim)
-        .filter(|value| !value.is_empty())
-    {
-        return Some(value.to_string());
+    extract_top_level_openai_base_url_line(config_text).or_else(|| {
+        let parsed = config_text.parse::<DocumentMut>().ok()?;
+        let provider_key = parsed
+            .get("model_provider")
+            .and_then(|item| item.as_str())
+            .map(str::trim)
+            .filter(|value| !value.is_empty())?;
+
+        parsed
+            .get("model_providers")
+            .and_then(|item| item.as_table())
+            .and_then(|table| table.get(provider_key))
+            .and_then(|item| item.as_table())
+            .and_then(|table| table.get("base_url"))
+            .and_then(|item| item.as_str())
+            .map(str::trim)
+            .filter(|value| !value.is_empty())
+            .map(str::to_string)
+    })
+}
+
+fn extract_top_level_openai_base_url_line(content: &str) -> Option<String> {
+    for line in content.lines() {
+        let trimmed = line.trim_start();
+        if trimmed.starts_with('[') {
+            return None;
+        }
+        if !is_active_openai_base_url_line(line) {
+            continue;
+        }
+        return parse_toml_string_value_after_equals(trimmed);
+    }
+    None
+}
+
+fn parse_toml_string_value_after_equals(line: &str) -> Option<String> {
+    let value = line.split_once('=')?.1.trim_start();
+    let mut chars = value.chars();
+    if chars.next()? != '"' {
+        return None;
     }
 
-    let provider_key = parsed
-        .get("model_provider")
-        .and_then(|item| item.as_str())
-        .map(str::trim)
-        .filter(|value| !value.is_empty())?;
-
-    parsed
-        .get("model_providers")
-        .and_then(|item| item.as_table())
-        .and_then(|table| table.get(provider_key))
-        .and_then(|item| item.as_table())
-        .and_then(|table| table.get("base_url"))
-        .and_then(|item| item.as_str())
-        .map(str::trim)
-        .filter(|value| !value.is_empty())
-        .map(str::to_string)
+    let mut result = String::new();
+    let mut escaped = false;
+    for ch in chars {
+        if escaped {
+            result.push(match ch {
+                'n' => '\n',
+                'r' => '\r',
+                't' => '\t',
+                '"' => '"',
+                '\\' => '\\',
+                other => other,
+            });
+            escaped = false;
+            continue;
+        }
+        match ch {
+            '\\' => escaped = true,
+            '"' => return Some(result.trim().to_string()).filter(|value| !value.is_empty()),
+            other => result.push(other),
+        }
+    }
+    None
 }
 
 fn set_managed_openai_base_url(content: &str, base_url: &str) -> String {
@@ -537,28 +581,15 @@ pub fn restore_codex_settings_config_model_provider_for_backfill(
     Ok(())
 }
 
-/// Atomically write Codex live config after normalizing provider-specific ids.
+/// Atomically write Codex auth and apply only the auth-switch-style `openai_base_url` patch.
 ///
-/// Use this for provider-driven live writes. Keep `write_codex_live_atomic` available
-/// for exact restore/backup paths that must preserve the config text byte-for-byte.
+/// Kept as the provider-switch entrypoint, but it deliberately no longer normalizes,
+/// restores, or writes a full Codex `config.toml` snapshot.
 pub fn write_codex_live_atomic_with_stable_provider(
     auth: &Value,
     config_text_opt: Option<&str>,
 ) -> Result<(), AppError> {
-    match config_text_opt {
-        Some(config_text) => {
-            let mut settings = serde_json::Map::new();
-            settings.insert("config".to_string(), Value::String(config_text.to_string()));
-            let mut settings = Value::Object(settings);
-            normalize_codex_settings_config_model_provider(&mut settings, None)?;
-            let config_text = settings
-                .get("config")
-                .and_then(|value| value.as_str())
-                .unwrap_or(config_text);
-            write_codex_live_atomic(auth, Some(config_text))
-        }
-        None => write_codex_live_atomic(auth, None),
-    }
+    write_codex_live_atomic(auth, config_text_opt)
 }
 
 /// Update a field in Codex config.toml using toml_edit (syntax-preserving).
@@ -679,6 +710,7 @@ pub fn remove_codex_toml_base_url_if(toml_str: &str, predicate: impl Fn(&str) ->
 #[cfg(test)]
 mod tests {
     use super::*;
+    use serial_test::serial;
 
     #[test]
     fn managed_openai_base_url_preserves_unrelated_config() {
@@ -733,6 +765,109 @@ base_url = "https://other.example/v1"
             extract_openai_base_url_for_live_patch(config).as_deref(),
             Some("https://vendor.example/v1")
         );
+    }
+
+    fn with_temp_codex_home<T>(test: impl FnOnce(&std::path::Path) -> T) -> T {
+        let temp = tempfile::tempdir().expect("tempdir");
+        let old_test_home = std::env::var_os("CC_SWITCH_TEST_HOME");
+        std::env::set_var("CC_SWITCH_TEST_HOME", temp.path());
+        crate::settings::reload_settings().expect("reload settings");
+        let result = test(temp.path());
+        match old_test_home {
+            Some(value) => std::env::set_var("CC_SWITCH_TEST_HOME", value),
+            None => std::env::remove_var("CC_SWITCH_TEST_HOME"),
+        }
+        crate::settings::reload_settings().expect("reload settings");
+        result
+    }
+
+    #[test]
+    #[serial]
+    fn write_live_atomic_does_not_replace_existing_config_toml() {
+        with_temp_codex_home(|home| {
+            let codex_dir = home.join(".codex");
+            std::fs::create_dir_all(&codex_dir).expect("create codex dir");
+            let path = codex_dir.join("config.toml");
+            let original = r#"# user header
+model = "gpt-5"
+
+[profiles.work]
+model = "gpt-4.1"
+model_provider = "openai"
+
+[mcp_servers.keep]
+command = "echo"
+"#;
+            std::fs::write(&path, original).expect("seed config");
+
+            let provider_config = r#"model_provider = "vendor"
+model = "provider-model"
+
+[model_providers.vendor]
+base_url = "https://vendor.example/v1"
+wire_api = "responses"
+"#;
+            write_codex_live_atomic(
+                &serde_json::json!({"OPENAI_API_KEY": "key"}),
+                Some(provider_config),
+            )
+            .expect("write live");
+
+            let after = std::fs::read_to_string(&path).expect("read config");
+            assert!(after.contains("openai_base_url = \"https://vendor.example/v1\" # cc-switch managed"));
+            assert!(after.contains("# user header"));
+            assert!(after.contains("model = \"gpt-5\""));
+            assert!(after.contains("[profiles.work]"));
+            assert!(after.contains("[mcp_servers.keep]"));
+            assert!(!after.contains("provider-model"));
+            assert!(!after.contains("[model_providers.vendor]"));
+            assert!(!after.contains("wire_api = \"responses\""));
+        });
+    }
+
+    #[test]
+    #[serial]
+    fn write_live_atomic_disables_only_managed_base_url_without_deleting_config() {
+        with_temp_codex_home(|home| {
+            let codex_dir = home.join(".codex");
+            std::fs::create_dir_all(&codex_dir).expect("create codex dir");
+            let path = codex_dir.join("config.toml");
+            let original = r#"openai_base_url = "https://managed.example/v1" # cc-switch managed
+model = "gpt-5"
+
+[profiles.work]
+model = "gpt-4.1"
+"#;
+            std::fs::write(&path, original).expect("seed config");
+
+            write_codex_live_atomic(
+                &serde_json::json!({"tokens": {"id_token": "oauth"}}),
+                None,
+            )
+            .expect("write oauth live");
+
+            let after = std::fs::read_to_string(&path).expect("read config");
+            assert!(after.contains("# openai_base_url = \"https://managed.example/v1\" # cc-switch managed"));
+            assert!(after.contains("model = \"gpt-5\""));
+            assert!(after.contains("[profiles.work]"));
+        });
+    }
+
+    #[test]
+    fn extracts_top_level_openai_base_url_without_parsing_full_toml() {
+        let config = "openai_base_url = \"https://top.example/v1\" # comment\n[broken\n";
+        assert_eq!(
+            extract_openai_base_url_for_live_patch(config).as_deref(),
+            Some("https://top.example/v1")
+        );
+    }
+
+    #[test]
+    fn does_not_extract_nested_openai_base_url_as_top_level() {
+        let config = r#"[profiles.work]
+openai_base_url = "https://nested.example/v1"
+"#;
+        assert_eq!(extract_openai_base_url_for_live_patch(config), None);
     }
 
     #[test]

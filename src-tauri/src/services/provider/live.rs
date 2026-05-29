@@ -8,9 +8,7 @@ use serde_json::{json, Value};
 use toml_edit::{DocumentMut, Item, TableLike};
 
 use crate::app_config::AppType;
-use crate::codex_config::{
-    get_codex_auth_path, get_codex_config_path, write_codex_live_atomic_with_stable_provider,
-};
+use crate::codex_config::{get_codex_auth_path, write_codex_live_atomic_with_stable_provider};
 use crate::config::{delete_file, get_claude_settings_path, read_json_file, write_json_file};
 use crate::database::Database;
 use crate::error::AppError;
@@ -663,17 +661,17 @@ impl LiveSnapshot {
             }
             LiveSnapshot::Codex { auth, config } => {
                 let auth_path = get_codex_auth_path();
-                let config_path = get_codex_config_path();
                 if let Some(value) = auth {
                     write_json_file(&auth_path, value)?;
                 } else if auth_path.exists() {
                     delete_file(&auth_path)?;
                 }
 
-                if let Some(text) = config {
-                    crate::config::write_text_file(&config_path, text)?;
-                } else if config_path.exists() {
-                    delete_file(&config_path)?;
+                // Lite invariant: snapshot restore must never replace or delete the
+                // user's Codex config.toml. At most, replay the same base URL line
+                // patch used by normal provider switches.
+                if let Some(text) = config.as_deref() {
+                    crate::codex_config::patch_codex_openai_base_url_from_config_text(Some(text))?;
                 }
             }
             LiveSnapshot::Gemini { env, .. } => {

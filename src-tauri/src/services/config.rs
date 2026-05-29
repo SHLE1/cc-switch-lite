@@ -142,7 +142,7 @@ impl ConfigService {
     }
 
     fn sync_codex_live(
-        config: &mut MultiAppConfig,
+        _config: &mut MultiAppConfig,
         provider_id: &str,
         provider: &Provider,
     ) -> Result<(), AppError> {
@@ -160,21 +160,9 @@ impl ConfigService {
         let cfg_text = settings.get("config").and_then(Value::as_str);
 
         crate::codex_config::write_codex_live_atomic_with_stable_provider(auth, cfg_text)?;
-        // 注意：MCP 同步在 v3.7.0 中已通过 McpService 进行，不再在此调用
-        // sync_enabled_to_codex 使用旧的 config.mcp.codex 结构，在新架构中为空
-        // MCP 的启用/禁用应通过 McpService::toggle_app 进行
-
-        let cfg_text_after = crate::codex_config::read_and_validate_codex_config_text()?;
-        if let Some(manager) = config.get_manager_mut(&AppType::Codex) {
-            if let Some(target) = manager.providers.get_mut(provider_id) {
-                if let Some(obj) = target.settings_config.as_object_mut() {
-                    obj.insert(
-                        "config".to_string(),
-                        serde_json::Value::String(cfg_text_after),
-                    );
-                }
-            }
-        }
+        // Lite must not mirror, normalize, or store the user's live `config.toml`
+        // back into a provider snapshot. Codex config ownership is limited to the
+        // auth-switch-style `openai_base_url` line patch in `codex_config`.
 
         Ok(())
     }
