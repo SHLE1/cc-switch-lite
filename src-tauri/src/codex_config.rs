@@ -13,6 +13,9 @@ use toml_edit::DocumentMut;
 
 pub const CC_SWITCH_CODEX_MODEL_PROVIDER_ID: &str = "ccswitch";
 
+const OPENAI_BASE_URL_KEY: &str = "openai_base_url";
+const MANAGED_BASE_URL_MARKER: &str = "# cc-switch managed";
+const PREVIOUS_BASE_URL_PREFIX: &str = "# cc-switch previous: ";
 /// Reserved built-in provider IDs from OpenAI Codex's config/model-provider
 /// catalog. Keep in sync with Codex `RESERVED_MODEL_PROVIDER_IDS` and legacy
 /// removed provider aliases.
@@ -74,45 +77,36 @@ pub fn delete_codex_provider_config(
     Ok(())
 }
 
-/// 原子写 Codex 的 `auth.json` 与 `config.toml`，在第二步失败时回滚第一步
+/// 原子写 Codex 的 `auth.json`，并且只对 `config.toml` 的 `openai_base_url` 做最小修改。
+///
+/// cc-switch 不再托管完整 `config.toml`：provider 配置里的 TOML 仅作为
+/// base URL 的来源。切换 API profile 时写入/替换一行带 managed marker 的
+/// `openai_base_url`；切回 OAuth/auth.json profile 时只注释掉该 managed 行。
 pub fn write_codex_live_atomic(
     auth: &Value,
     config_text_opt: Option<&str>,
 ) -> Result<(), AppError> {
     let auth_path = get_codex_auth_path();
-    let config_path = get_codex_config_path();
 
     if let Some(parent) = auth_path.parent() {
         std::fs::create_dir_all(parent).map_err(|e| AppError::io(parent, e))?;
     }
 
-    // 读取旧内容用于回滚
     let old_auth = if auth_path.exists() {
         Some(fs::read(&auth_path).map_err(|e| AppError::io(&auth_path, e))?)
     } else {
         None
     };
-    let _old_config = if config_path.exists() {
-        Some(fs::read(&config_path).map_err(|e| AppError::io(&config_path, e))?)
-    } else {
-        None
-    };
 
-    // 准备写入内容
-    let cfg_text = match config_text_opt {
-        Some(s) => s.to_string(),
-        None => String::new(),
-    };
-    if !cfg_text.trim().is_empty() {
-        toml::from_str::<toml::Table>(&cfg_text).map_err(|e| AppError::toml(&config_path, e))?;
-    }
-
-    // 第一步：写 auth.json
     write_json_file(&auth_path, auth)?;
 
-    // 第二步：写 config.toml（失败则回滚 auth.json）
-    if let Err(e) = write_text_file(&config_path, &cfg_text) {
-        // 回滚 auth.json
+    let base_url = config_text_opt.and_then(extract_openai_base_url_for_live_patch);
+    let patch_result = match base_url.as_deref() {
+        Some(url) => enable_codex_openai_base_url(url),
+        None => disable_codex_openai_base_url(),
+    };
+
+    if let Err(e) = patch_result {
         if let Some(bytes) = old_auth {
             let _ = atomic_write(&auth_path, &bytes);
         } else {
@@ -132,6 +126,160 @@ pub fn read_codex_config_text() -> Result<String, AppError> {
     } else {
         Ok(String::new())
     }
+}
+
+pub fn enable_codex_openai_base_url(base_url: &str) -> Result<(), AppError> {
+    let trimmed = base_url.trim();
+    if trimmed.is_empty() {
+        return Err(AppError::Config("Codex Base URL cannot be empty".to_string()));
+    }
+
+    let config_path = get_codex_config_path();
+    let original = fs::read_to_string(&config_path).unwrap_or_default();
+    let next = set_managed_openai_base_url(&original, trimmed);
+    write_text_file(&config_path, &next)
+}
+
+pub fn disable_codex_openai_base_url() -> Result<(), AppError> {
+    let config_path = get_codex_config_path();
+    if !config_path.exists() {
+        return Ok(());
+    }
+
+    let original = fs::read_to_string(&config_path).map_err(|e| AppError::io(&config_path, e))?;
+    let next = comment_managed_openai_base_url(&original);
+    if next != original {
+        write_text_file(&config_path, &next)?;
+    }
+    Ok(())
+}
+
+fn extract_openai_base_url_for_live_patch(config_text: &str) -> Option<String> {
+    let parsed = config_text.parse::<DocumentMut>().ok()?;
+    if let Some(value) = parsed
+        .get(OPENAI_BASE_URL_KEY)
+        .and_then(|item| item.as_str())
+        .map(str::trim)
+        .filter(|value| !value.is_empty())
+    {
+        return Some(value.to_string());
+    }
+
+    let provider_key = parsed
+        .get("model_provider")
+        .and_then(|item| item.as_str())
+        .map(str::trim)
+        .filter(|value| !value.is_empty())?;
+
+    parsed
+        .get("model_providers")
+        .and_then(|item| item.as_table())
+        .and_then(|table| table.get(provider_key))
+        .and_then(|item| item.as_table())
+        .and_then(|table| table.get("base_url"))
+        .and_then(|item| item.as_str())
+        .map(str::trim)
+        .filter(|value| !value.is_empty())
+        .map(str::to_string)
+}
+
+fn set_managed_openai_base_url(content: &str, base_url: &str) -> String {
+    let mut lines = split_config_lines(content);
+    let managed_index = lines
+        .iter()
+        .position(|line| is_openai_base_url_line(line) && line.contains(MANAGED_BASE_URL_MARKER));
+    let replacement = format!(
+        "{} = \"{}\" {}",
+        OPENAI_BASE_URL_KEY,
+        escape_toml_string(base_url),
+        MANAGED_BASE_URL_MARKER
+    );
+
+    if let Some(index) = managed_index {
+        lines[index] = replacement;
+        return join_config_lines(&lines, content);
+    }
+
+    if let Some(active_index) = lines.iter().position(|line| is_active_openai_base_url_line(line)) {
+        lines[active_index] = format!("{}{}", PREVIOUS_BASE_URL_PREFIX, lines[active_index]);
+        lines.insert(active_index + 1, replacement);
+        return join_config_lines(&lines, content);
+    }
+
+    if let Some(insertion_index) = first_non_comment_top_level_index(&lines) {
+        lines.insert(insertion_index, replacement);
+    } else {
+        if !lines.is_empty() && lines.last().is_some_and(|line| !line.is_empty()) {
+            lines.push(String::new());
+        }
+        lines.push(replacement);
+    }
+
+    join_config_lines(&lines, content)
+}
+
+fn comment_managed_openai_base_url(content: &str) -> String {
+    let mut lines = split_config_lines(content);
+    let Some(managed_index) = lines
+        .iter()
+        .position(|line| is_openai_base_url_line(line) && line.contains(MANAGED_BASE_URL_MARKER))
+    else {
+        return content.to_string();
+    };
+
+    if lines[managed_index].trim_start().starts_with('#') {
+        return content.to_string();
+    }
+
+    lines[managed_index] = format!("# {}", lines[managed_index]);
+    join_config_lines(&lines, content)
+}
+
+fn split_config_lines(content: &str) -> Vec<String> {
+    if content.is_empty() {
+        Vec::new()
+    } else {
+        content.replace("\r\n", "\n").split('\n').map(ToOwned::to_owned).collect()
+    }
+}
+
+fn join_config_lines(lines: &[String], original: &str) -> String {
+    let result = lines.join("\n");
+    if result.is_empty() {
+        String::new()
+    } else if original.ends_with('\n') || result.ends_with('\n') {
+        result
+    } else {
+        format!("{}\n", result)
+    }
+}
+
+fn is_openai_base_url_line(line: &str) -> bool {
+    let trimmed = line.trim_start();
+    let without_comment = trimmed.strip_prefix('#').map(str::trim_start).unwrap_or(trimmed);
+    without_comment.starts_with(OPENAI_BASE_URL_KEY)
+        && without_comment[OPENAI_BASE_URL_KEY.len()..]
+            .trim_start()
+            .starts_with('=')
+}
+
+fn is_active_openai_base_url_line(line: &str) -> bool {
+    let trimmed = line.trim_start();
+    trimmed.starts_with(OPENAI_BASE_URL_KEY)
+        && trimmed[OPENAI_BASE_URL_KEY.len()..]
+            .trim_start()
+            .starts_with('=')
+}
+
+fn first_non_comment_top_level_index(lines: &[String]) -> Option<usize> {
+    lines.iter().position(|line| {
+        let trimmed = line.trim();
+        !trimmed.is_empty() && !trimmed.starts_with('#') && !trimmed.starts_with('[')
+    })
+}
+
+fn escape_toml_string(value: &str) -> String {
+    value.replace('\\', "\\\\").replace('"', "\\\"")
 }
 
 /// 对非空的 TOML 文本进行语法校验
@@ -531,6 +679,61 @@ pub fn remove_codex_toml_base_url_if(toml_str: &str, predicate: impl Fn(&str) ->
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn managed_openai_base_url_preserves_unrelated_config() {
+        let original = r#"model = "gpt-5"
+
+[profiles.work]
+model = "local-model"
+"#;
+
+        let result = set_managed_openai_base_url(original, "https://api.example.com/v1");
+
+        assert!(result.contains("openai_base_url = \"https://api.example.com/v1\" # cc-switch managed"));
+        assert!(result.contains("model = \"gpt-5\""));
+        assert!(result.contains("[profiles.work]"));
+        assert!(result.contains("model = \"local-model\""));
+    }
+
+    #[test]
+    fn managed_openai_base_url_comments_existing_user_line() {
+        let original = "openai_base_url = \"https://old.example/v1\"\nmodel = \"gpt-5\"\n";
+
+        let result = set_managed_openai_base_url(original, "https://new.example/v1");
+
+        assert!(result.contains("# cc-switch previous: openai_base_url = \"https://old.example/v1\""));
+        assert!(result.contains("openai_base_url = \"https://new.example/v1\" # cc-switch managed"));
+        assert!(result.contains("model = \"gpt-5\""));
+    }
+
+    #[test]
+    fn comment_managed_openai_base_url_only_comments_managed_line() {
+        let original = "# cc-switch previous: openai_base_url = \"https://old.example/v1\"\nopenai_base_url = \"https://new.example/v1\" # cc-switch managed\nmodel = \"gpt-5\"\n";
+
+        let result = comment_managed_openai_base_url(original);
+
+        assert!(result.contains("# openai_base_url = \"https://new.example/v1\" # cc-switch managed"));
+        assert!(result.contains("# cc-switch previous: openai_base_url = \"https://old.example/v1\""));
+        assert!(result.contains("model = \"gpt-5\""));
+    }
+
+    #[test]
+    fn extracts_base_url_from_active_model_provider() {
+        let config = r#"model_provider = "vendor"
+
+[model_providers.vendor]
+base_url = "https://vendor.example/v1"
+
+[model_providers.other]
+base_url = "https://other.example/v1"
+"#;
+
+        assert_eq!(
+            extract_openai_base_url_for_live_patch(config).as_deref(),
+            Some("https://vendor.example/v1")
+        );
+    }
 
     #[test]
     fn normalize_live_config_preserves_current_custom_model_provider_id() {

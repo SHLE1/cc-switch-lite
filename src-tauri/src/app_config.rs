@@ -377,18 +377,9 @@ impl AppType {
         )
     }
 
-    /// Return an iterator over all app types
+    /// Return the app types exposed by the lite UI/runtime.
     pub fn all() -> impl Iterator<Item = AppType> {
-        [
-            AppType::Claude,
-            AppType::ClaudeDesktop,
-            AppType::Codex,
-            AppType::Gemini,
-            AppType::OpenCode,
-            AppType::OpenClaw,
-            AppType::Hermes,
-        ]
-        .into_iter()
+        [AppType::Claude, AppType::Codex].into_iter()
     }
 }
 
@@ -399,16 +390,11 @@ impl FromStr for AppType {
         let normalized = s.trim().to_lowercase();
         match normalized.as_str() {
             "claude" => Ok(AppType::Claude),
-            "claude-desktop" | "claude_desktop" | "claudedesktop" => Ok(AppType::ClaudeDesktop),
             "codex" => Ok(AppType::Codex),
-            "gemini" => Ok(AppType::Gemini),
-            "opencode" => Ok(AppType::OpenCode),
-            "openclaw" => Ok(AppType::OpenClaw),
-            "hermes" => Ok(AppType::Hermes),
             other => Err(AppError::localized(
                 "unsupported_app",
-                format!("不支持的应用标识: '{other}'。可选值: claude, claude-desktop, codex, gemini, opencode, openclaw, hermes。"),
-                format!("Unsupported app id: '{other}'. Allowed: claude, claude-desktop, codex, gemini, opencode, openclaw, hermes."),
+                format!("不支持的应用标识: '{other}'。精简版仅支持 claude 与 codex。"),
+                format!("Unsupported app id: '{other}'. Lite mode only supports claude and codex."),
             )),
         }
     }

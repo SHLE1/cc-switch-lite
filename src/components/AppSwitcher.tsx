@@ -18,15 +18,7 @@ interface AppSwitcherProps {
   compact?: boolean;
 }
 
-const ALL_APPS: AppId[] = [
-  "claude",
-  "claude-desktop",
-  "codex",
-  "gemini",
-  "opencode",
-  "openclaw",
-  "hermes",
-];
+const ALL_APPS: AppId[] = ["claude", "codex"];
 const STORAGE_KEY = "cc-switch-last-app";
 
 export function AppSwitcher({
@@ -41,23 +33,13 @@ export function AppSwitcher({
     onSwitch(app);
   };
   const iconSize = 20;
-  const appIconName: Record<AppId, string> = {
+  const appIconName: Partial<Record<AppId, string>> = {
     claude: "claude",
-    "claude-desktop": "claude",
     codex: "openai",
-    gemini: "gemini",
-    opencode: "opencode",
-    openclaw: "openclaw",
-    hermes: "hermes",
   };
-  const appDisplayName: Record<AppId, string> = {
+  const appDisplayName: Partial<Record<AppId, string>> = {
     claude: "Claude Code",
-    "claude-desktop": "Claude Desktop",
     codex: "Codex",
-    gemini: "Gemini",
-    opencode: "OpenCode",
-    openclaw: "OpenClaw",
-    hermes: "Hermes",
   };
 
   // Filter apps based on visibility settings (default all visible)
@@ -86,8 +68,8 @@ export function AppSwitcher({
           >
             <span className="relative inline-flex shrink-0">
               <ProviderIcon
-                icon={appIconName[app]}
-                name={appDisplayName[app]}
+                icon={appIconName[app] ?? "terminal"}
+                name={appDisplayName[app] ?? app}
                 size={iconSize}
               />
               {BadgeIcon && (
