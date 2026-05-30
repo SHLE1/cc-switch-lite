@@ -1,4 +1,4 @@
-import { Check, Copy, Edit, Play, Trash2 } from "lucide-react";
+import { BarChart3, Check, Copy, Edit, Play, Trash2 } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -34,6 +34,7 @@ export function ProviderActions({
   onSwitch,
   onEdit,
   onDuplicate,
+  onConfigureUsage,
   onDelete,
   isReadOnly = false,
 }: ProviderActionsProps) {
@@ -86,6 +87,21 @@ export function ProviderActions({
           <Copy className="h-4 w-4" />
         </Button>
 
+        <Button
+          size="icon"
+          variant="ghost"
+          onClick={onConfigureUsage || undefined}
+          title={t("provider.configureUsage", {
+            defaultValue: "配置用量查询",
+          })}
+          className={cn(
+            iconButtonClass,
+            !onConfigureUsage &&
+              "opacity-40 cursor-not-allowed text-muted-foreground",
+          )}
+        >
+          <BarChart3 className="h-4 w-4" />
+        </Button>
         <Button
           size="icon"
           variant="ghost"

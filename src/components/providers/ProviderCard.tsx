@@ -60,12 +60,7 @@ interface ProviderCardProps {
   onSetAsDefault?: () => void;
 }
 
-/** 判断是否为官方供应商（无自定义 base URL / API key，直连官方 API） */
 function isOfficialProvider(provider: Provider, appId: AppId): boolean {
-  if (provider.category === "official") {
-    return true;
-  }
-
   const config = provider.settingsConfig as Record<string, any>;
   if (appId === "claude") {
     const baseUrl = config?.env?.ANTHROPIC_BASE_URL;

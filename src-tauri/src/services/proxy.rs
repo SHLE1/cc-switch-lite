@@ -1934,13 +1934,12 @@ impl ProxyService {
         match (auth, config_str) {
             (Some(auth), cfg) => write_codex_live_atomic(auth, cfg)
                 .map_err(|e| format!("写入 Codex 配置失败: {e}"))?,
-            (None, Some(cfg)) => crate::codex_config::patch_codex_openai_base_url_from_config_text(
-                Some(cfg),
-            )
-            .map_err(|e| format!("更新 Codex base URL 失败: {e}"))?,
+            (None, Some(cfg)) => {
+                crate::codex_config::patch_codex_openai_base_url_from_config_text(Some(cfg))
+                    .map_err(|e| format!("更新 Codex base URL 失败: {e}"))?
+            }
             (None, None) => {}
         }
-
 
         Ok(())
     }

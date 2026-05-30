@@ -5,7 +5,6 @@
 use once_cell::sync::Lazy;
 use tauri::menu::{CheckMenuItem, Menu, MenuBuilder, MenuItem, Submenu, SubmenuBuilder};
 use tauri::{Emitter, Manager};
-use tauri_plugin_opener::OpenerExt;
 
 use crate::app_config::AppType;
 use crate::error::AppError;
@@ -21,9 +20,7 @@ static TRAY_SECTION_SUBMENUS: Lazy<
 #[derive(Clone, Copy)]
 pub struct TrayTexts {
     pub show_main: &'static str,
-    pub open_website: &'static str,
     pub no_providers_label: &'static str,
-    pub lightweight_mode: &'static str,
     pub quit: &'static str,
     pub _auto_label: &'static str,
 }
@@ -33,25 +30,19 @@ impl TrayTexts {
         match language {
             "en" => Self {
                 show_main: "Open main window",
-                open_website: "Open Official Website",
                 no_providers_label: "(no providers)",
-                lightweight_mode: "Lightweight Mode",
                 quit: "Quit",
                 _auto_label: "Auto (Failover)",
             },
             "ja" => Self {
                 show_main: "メインウィンドウを開く",
-                open_website: "公式サイトを開く",
                 no_providers_label: "(プロバイダーなし)",
-                lightweight_mode: "軽量モード",
                 quit: "終了",
                 _auto_label: "自動 (フェイルオーバー)",
             },
             _ => Self {
                 show_main: "打开主界面",
-                open_website: "打开官方网站",
                 no_providers_label: "(无供应商)",
-                lightweight_mode: "轻量模式",
                 quit: "退出",
                 _auto_label: "自动 (故障转移)",
             },
@@ -74,18 +65,18 @@ pub const TRAY_ID: &str = "cc-switch";
 
 pub const TRAY_SECTIONS: [TrayAppSection; 3] = [
     TrayAppSection {
-        app_type: AppType::Claude,
-        prefix: "claude_",
-        empty_id: "claude_empty",
-        header_label: "Claude",
-        log_name: "Claude",
-    },
-    TrayAppSection {
         app_type: AppType::Codex,
         prefix: "codex_",
         empty_id: "codex_empty",
         header_label: "Codex",
         log_name: "Codex",
+    },
+    TrayAppSection {
+        app_type: AppType::Claude,
+        prefix: "claude_",
+        empty_id: "claude_empty",
+        header_label: "Claude",
+        log_name: "Claude",
     },
     TrayAppSection {
         app_type: AppType::Gemini,
@@ -96,14 +87,14 @@ pub const TRAY_SECTIONS: [TrayAppSection; 3] = [
     },
 ];
 
-/// 配色阈值（与前端 `utilizationColor` 语义一致）。
-const UTIL_WARN_PCT: f64 = 70.0;
-const UTIL_DANGER_PCT: f64 = 90.0;
+/// 配色阈值（与前端 `remainingColor` 语义一致）。
+const REMAINING_WARN_PCT: f64 = 30.0;
+const REMAINING_DANGER_PCT: f64 = 10.0;
 
-fn emoji_for_utilization(pct: f64) -> &'static str {
-    if pct >= UTIL_DANGER_PCT {
+fn emoji_for_remaining(pct: f64) -> &'static str {
+    if pct <= REMAINING_DANGER_PCT {
         "\u{1F534}" // 🔴
-    } else if pct >= UTIL_WARN_PCT {
+    } else if pct <= REMAINING_WARN_PCT {
         "\u{1F7E0}" // 🟠
     } else {
         "\u{1F7E2}" // 🟢
@@ -159,28 +150,34 @@ fn format_subscription_summary(
         return None;
     }
 
-    // 色标取所有已选 tier 里最高的利用率——用户更关心"离上限多近"。
-    let worst = parts
-        .iter()
-        .map(|(_, u)| *u)
-        .fold(f64::NEG_INFINITY, f64::max);
-    if !worst.is_finite() {
+    if !parts.iter().all(|(_, u)| u.is_finite()) {
         return None;
     }
 
-    let emoji = emoji_for_utilization(worst);
+    let lowest_remaining = parts
+        .iter()
+        .map(|(_, u)| (100.0 - *u).clamp(0.0, 100.0))
+        .fold(f64::INFINITY, f64::min);
+    let emoji = emoji_for_remaining(lowest_remaining);
     let body = parts
         .iter()
-        .map(|(label, u)| format!("{label}{}%", u.round() as i64))
+        .map(|(label, u)| format!("{label}{}%", (100.0 - *u).clamp(0.0, 100.0).round() as i64))
         .collect::<Vec<_>>()
         .join(" ");
     Some(format!("{emoji} {body}"))
 }
 
-fn tier_pct(data: &crate::provider::UsageData) -> Option<f64> {
-    match (data.used, data.total) {
-        (Some(used), Some(total)) if total > 0.0 => Some(used / total * 100.0),
-        _ => None,
+fn tier_remaining_pct(data: &crate::provider::UsageData) -> Option<f64> {
+    match (data.remaining, data.total) {
+        (Some(remaining), Some(total)) if total > 0.0 => {
+            Some((remaining / total * 100.0).clamp(0.0, 100.0))
+        }
+        _ => match (data.used, data.total) {
+            (Some(used), Some(total)) if total > 0.0 => {
+                Some(((total - used).max(0.0) / total * 100.0).clamp(0.0, 100.0))
+            }
+            _ => None,
+        },
     }
 }
 
@@ -208,33 +205,58 @@ fn format_script_summary(result: &crate::provider::UsageResult) -> Option<String
         else {
             continue;
         };
-        if let Some(u) = tier_pct(d) {
-            parts.push((label, u));
+        if let Some(remaining) = tier_remaining_pct(d) {
+            parts.push((label, remaining));
         }
     }
     if !parts.is_empty() {
-        let worst = parts
+        let lowest_remaining = parts
             .iter()
-            .map(|(_, u)| *u)
-            .fold(f64::NEG_INFINITY, f64::max);
-        let emoji = emoji_for_utilization(worst);
+            .map(|(_, remaining)| *remaining)
+            .fold(f64::INFINITY, f64::min);
+        let emoji = emoji_for_remaining(lowest_remaining);
         let body = parts
             .iter()
-            .map(|(label, u)| format!("{label}{}%", u.round() as i64))
+            .map(|(label, remaining)| format!("{label}{}%", remaining.round() as i64))
             .collect::<Vec<_>>()
             .join(" ");
         return Some(format!("{emoji} {body}"));
     }
 
     let first = data.first()?;
-    let pct = tier_pct(first)?;
-    let emoji = emoji_for_utilization(pct);
-    let plan = first.plan_name.as_deref().unwrap_or("");
-    let rounded = pct.round() as i64;
+    if let Some(remaining_pct) = tier_remaining_pct(first) {
+        let emoji = emoji_for_remaining(remaining_pct);
+        let plan = display_plan_name(first.plan_name.as_deref()).unwrap_or("");
+        let rounded = remaining_pct.round() as i64;
+        return if plan.is_empty() {
+            Some(format!("{} {}%", emoji, rounded))
+        } else {
+            Some(format!("{} {} {}%", emoji, plan, rounded))
+        };
+    }
+
+    let remaining = first.remaining?;
+    let emoji = emoji_for_remaining(100.0);
+    let plan = display_plan_name(first.plan_name.as_deref()).unwrap_or("");
+    let unit = first.unit.as_deref().unwrap_or("");
     if plan.is_empty() {
-        Some(format!("{} {}%", emoji, rounded))
+        Some(format!("{} {:.2}{}", emoji, remaining, unit))
     } else {
-        Some(format!("{} {} {}%", emoji, plan, rounded))
+        Some(format!("{} {} {:.2}{}", emoji, plan, remaining, unit))
+    }
+}
+
+fn display_plan_name(plan: Option<&str>) -> Option<&str> {
+    let plan = plan?.trim();
+    if plan.is_empty()
+        || plan.eq_ignore_ascii_case("unrestricted")
+        || plan.eq_ignore_ascii_case("quota")
+        || plan.eq_ignore_ascii_case("balance")
+        || plan.eq_ignore_ascii_case("new-api")
+    {
+        None
+    } else {
+        Some(plan)
     }
 }
 
@@ -478,22 +500,11 @@ pub fn create_tray_menu(
     let mut section_handles: std::collections::HashMap<AppType, Submenu<tauri::Wry>> =
         std::collections::HashMap::new();
 
-    // 顶部：打开主界面 / 打开官方网站
+    // 顶部：打开主界面
     let show_main_item =
         MenuItem::with_id(app, "show_main", tray_texts.show_main, true, None::<&str>)
             .map_err(|e| AppError::Message(format!("创建打开主界面菜单失败: {e}")))?;
-    let open_website_item = MenuItem::with_id(
-        app,
-        "open_website",
-        tray_texts.open_website,
-        true,
-        None::<&str>,
-    )
-    .map_err(|e| AppError::Message(format!("创建打开官方网站菜单失败: {e}")))?;
-    menu_builder = menu_builder
-        .item(&show_main_item)
-        .item(&open_website_item)
-        .separator();
+    menu_builder = menu_builder.item(&show_main_item).separator();
 
     // Pre-compute proxy running state (used to disable official providers in tray menu)
     let is_proxy_running = futures::executor::block_on(app_state.proxy_service.is_running());
@@ -575,18 +586,6 @@ pub fn create_tray_menu(
 
         menu_builder = menu_builder.separator();
     }
-
-    let lightweight_item = CheckMenuItem::with_id(
-        app,
-        "lightweight_mode",
-        tray_texts.lightweight_mode,
-        true,
-        crate::lightweight::is_lightweight_mode(),
-        None::<&str>,
-    )
-    .map_err(|e| AppError::Message(format!("创建轻量模式菜单失败: {e}")))?;
-
-    menu_builder = menu_builder.item(&lightweight_item).separator();
 
     // 退出菜单（分隔符已在上面的 section 循环中添加）
     let quit_item = MenuItem::with_id(app, "quit", tray_texts.quit, true, None::<&str>)
@@ -700,20 +699,6 @@ pub fn handle_tray_menu_event(app: &tauri::AppHandle, event_id: &str) {
                 if let Err(e) = crate::lightweight::exit_lightweight_mode(app) {
                     log::error!("退出轻量模式重建窗口失败: {e}");
                 }
-            }
-        }
-        "open_website" => {
-            if let Err(e) = app.opener().open_url("https://ccswitch.io", None::<String>) {
-                log::error!("打开官方网站失败: {e}");
-            }
-        }
-        "lightweight_mode" => {
-            if crate::lightweight::is_lightweight_mode() {
-                if let Err(e) = crate::lightweight::exit_lightweight_mode(app) {
-                    log::error!("退出轻量模式失败: {e}");
-                }
-            } else if let Err(e) = crate::lightweight::enter_lightweight_mode(app) {
-                log::error!("进入轻量模式失败: {e}");
             }
         }
         "quit" => {
@@ -896,29 +881,28 @@ mod tests {
             resets_at: None,
         }
     }
-
     #[test]
-    fn claude_summary_uses_h_and_w_labels() {
+    fn claude_summary_uses_remaining_h_and_w_labels() {
         let quota = make_quota(
             "claude",
             true,
             vec![tier("five_hour", 9.0), tier("seven_day", 27.0)],
         );
         let s = format_subscription_summary(&quota).expect("should format");
-        assert!(s.contains("h9%"), "expected h9% in {s}");
-        assert!(s.contains("w27%"), "expected w27% in {s}");
+        assert!(s.contains("h91%"), "expected h91% in {s}");
+        assert!(s.contains("w73%"), "expected w73% in {s}");
     }
 
     #[test]
-    fn gemini_summary_uses_p_and_f_labels() {
+    fn gemini_summary_uses_remaining_p_and_f_labels() {
         let quota = make_quota(
             "gemini",
             true,
             vec![tier("gemini_pro", 15.0), tier("gemini_flash", 42.0)],
         );
         let s = format_subscription_summary(&quota).expect("should format");
-        assert!(s.contains("p15%"), "expected p15% in {s}");
-        assert!(s.contains("f42%"), "expected f42% in {s}");
+        assert!(s.contains("p85%"), "expected p85% in {s}");
+        assert!(s.contains("f58%"), "expected f58% in {s}");
     }
 
     #[test]
@@ -933,23 +917,20 @@ mod tests {
             ],
         );
         let s = format_subscription_summary(&quota).expect("should format");
-        assert!(s.contains("p5%"), "expected p5% in {s}");
-        assert!(s.contains("f42%"), "expected f42% in {s}");
-        assert!(s.contains("l80%"), "expected l80% in {s}");
+        assert!(s.contains("p95%"), "expected p95% in {s}");
+        assert!(s.contains("f58%"), "expected f58% in {s}");
+        assert!(s.contains("l20%"), "expected l20% in {s}");
     }
 
     #[test]
     fn gemini_summary_lite_only_still_renders() {
-        // flash_lite 如果是 API 返回的唯一 tier，仍应显示（避免前端 footer 能看到、
-        // 托盘空白的不对称）。
         let quota = make_quota("gemini", true, vec![tier("gemini_flash_lite", 80.0)]);
         let s = format_subscription_summary(&quota).expect("should format");
-        assert!(s.contains("l80%"), "expected l80% in {s}");
+        assert!(s.contains("l20%"), "expected l20% in {s}");
     }
 
     #[test]
-    fn gemini_summary_emoji_reflects_highest_tier_including_lite() {
-        // lite 是利用率最高的那条 → emoji 必须是红色，不能被 pro/flash 掩盖。
+    fn gemini_summary_emoji_reflects_lowest_remaining_tier_including_lite() {
         let quota = make_quota(
             "gemini",
             true,
@@ -962,13 +943,12 @@ mod tests {
         let s = format_subscription_summary(&quota).unwrap();
         assert!(
             s.starts_with("\u{1F534}"),
-            "expected red emoji (lite worst) in {s}"
+            "expected red emoji (lite lowest remaining) in {s}"
         );
     }
 
     #[test]
-    fn worst_emoji_reflects_highest_utilization() {
-        // 🔴 = \u{1F534}; 任一 tier ≥ 90% 时预期显示红色。
+    fn worst_emoji_reflects_low_remaining() {
         let quota = make_quota(
             "claude",
             true,
@@ -992,7 +972,6 @@ mod tests {
 
     #[test]
     fn gemini_without_any_known_tiers_returns_none() {
-        // 完全没有 pro/flash/flash_lite 三种 tier 的退化响应 → None。
         let quota = make_quota("gemini", true, vec![tier("some_future_tier", 80.0)]);
         assert!(format_subscription_summary(&quota).is_none());
     }
@@ -1019,7 +998,7 @@ mod tests {
     }
 
     #[test]
-    fn script_summary_token_plan_two_tiers() {
+    fn script_summary_token_plan_two_tiers_shows_remaining() {
         let r = usage_result(
             true,
             vec![
@@ -1028,8 +1007,8 @@ mod tests {
             ],
         );
         let s = format_script_summary(&r).expect("should format");
-        assert!(s.contains("h12%"), "expected h12% in {s}");
-        assert!(s.contains("w80%"), "expected w80% in {s}");
+        assert!(s.contains("h88%"), "expected h88% in {s}");
+        assert!(s.contains("w20%"), "expected w20% in {s}");
         assert!(s.starts_with("\u{1F7E0}"), "expected orange emoji in {s}");
     }
 
@@ -1050,7 +1029,7 @@ mod tests {
     fn script_summary_token_plan_five_hour_only() {
         let r = usage_result(true, vec![usage_data(Some(TIER_FIVE_HOUR), 8.0)]);
         let s = format_script_summary(&r).expect("should format");
-        assert!(s.contains("h8%"), "expected h8% in {s}");
+        assert!(s.contains("h92%"), "expected h92% in {s}");
         assert!(
             !s.contains("plan_name"),
             "plan_name should not leak into label: {s}"
@@ -1065,22 +1044,36 @@ mod tests {
     }
 
     #[test]
-    fn script_summary_single_bucket_fallback_with_plan_name() {
+    fn script_summary_single_bucket_fallback_with_plan_name_shows_remaining() {
         let r = usage_result(true, vec![usage_data(Some("Copilot Pro"), 40.0)]);
         let s = format_script_summary(&r).expect("should format");
         assert!(s.contains("Copilot Pro"), "expected plan name in {s}");
-        assert!(s.contains("40%"), "expected 40% in {s}");
+        assert!(s.contains("60%"), "expected 60% in {s}");
         assert!(
-            !s.contains("h40%"),
+            !s.contains("h60%"),
             "must not relabel non-token-plan data as h: {s}"
         );
     }
 
     #[test]
-    fn script_summary_single_bucket_fallback_without_plan_name() {
+    fn script_summary_single_bucket_fallback_without_plan_name_shows_remaining() {
         let r = usage_result(true, vec![usage_data(None, 15.0)]);
         let s = format_script_summary(&r).expect("should format");
-        assert_eq!(s, "\u{1F7E2} 15%", "expected emoji + pct only, got {s}");
+        assert_eq!(s, "\u{1F7E2} 85%", "expected emoji + pct only, got {s}");
+    }
+
+    #[test]
+    fn script_summary_hides_noisy_sub2api_mode_name() {
+        let mut data = usage_data(Some("unrestricted"), 0.0);
+        data.total = None;
+        data.used = None;
+        data.remaining = Some(252.23);
+        data.unit = Some("推理积分".to_string());
+        let r = usage_result(true, vec![data]);
+
+        let s = format_script_summary(&r).expect("should format");
+
+        assert_eq!(s, "🟢 252.23推理积分");
     }
 
     #[test]

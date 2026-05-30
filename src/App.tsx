@@ -3,9 +3,14 @@ import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { Maximize2, Minimize2, Minus, Plus, X } from "lucide-react";
-import type { Provider, VisibleApps } from "@/types";
+import type { Provider, UsageScript, VisibleApps } from "@/types";
 import { useProvidersQuery, useSettingsQuery } from "@/lib/query";
-import { providersApi, settingsApi, type AppId, type ProviderSwitchEvent } from "@/lib/api";
+import {
+  providersApi,
+  settingsApi,
+  type AppId,
+  type ProviderSwitchEvent,
+} from "@/lib/api";
 import { useProviderActions } from "@/hooks/useProviderActions";
 import { extractErrorMessage } from "@/utils/errorUtils";
 import { cn } from "@/lib/utils";
@@ -20,16 +25,17 @@ import { ProviderList } from "@/components/providers/ProviderList";
 import { AddProviderDialog } from "@/components/providers/AddProviderDialog";
 import { EditProviderDialog } from "@/components/providers/EditProviderDialog";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
+import UsageScriptModal from "@/components/UsageScriptModal";
 import { Button } from "@/components/ui/button";
 
 const DEFAULT_DRAG_BAR_HEIGHT = isWindows() || isLinux() ? 0 : 28;
 const HEADER_HEIGHT = 64;
 const STORAGE_KEY = "cc-switch-last-app";
-const SUPPORTED_APPS: AppId[] = ["claude", "codex"];
+const SUPPORTED_APPS: AppId[] = ["codex", "claude"];
 
 const getInitialApp = (): AppId => {
   const saved = localStorage.getItem(STORAGE_KEY) as AppId | null;
-  return saved && SUPPORTED_APPS.includes(saved) ? saved : "claude";
+  return saved && SUPPORTED_APPS.includes(saved) ? saved : "codex";
 };
 
 function App() {
@@ -39,10 +45,10 @@ function App() {
   const [isWindowMaximized, setIsWindowMaximized] = useState(false);
   const [editingProvider, setEditingProvider] = useState<Provider | null>(null);
   const [confirmDelete, setConfirmDelete] = useState<Provider | null>(null);
-
+  const [usageProvider, setUsageProvider] = useState<Provider | null>(null);
   useEffect(() => {
     if (!SUPPORTED_APPS.includes(activeApp)) {
-      setActiveApp("claude");
+      setActiveApp("codex");
       return;
     }
     localStorage.setItem(STORAGE_KEY, activeApp);
@@ -70,7 +76,7 @@ function App() {
   const providers = useMemo(() => data?.providers ?? {}, [data]);
   const currentProviderId = data?.currentProviderId ?? "";
 
-  const { addProvider, updateProvider, switchProvider, deleteProvider } =
+  const { addProvider, updateProvider, switchProvider, deleteProvider, saveUsageScript } =
     useProviderActions(activeApp, false, false);
 
   useEffect(() => {
@@ -175,6 +181,17 @@ function App() {
     if (!confirmDelete) return;
     await deleteProvider(confirmDelete.id);
     setConfirmDelete(null);
+  };
+
+  const handleConfigureUsage = (provider: Provider) => {
+    setUsageProvider(provider);
+  };
+
+  const handleSaveUsageScript = async (script: UsageScript) => {
+    if (!usageProvider) return;
+    await saveUsageScript(usageProvider, script);
+    setUsageProvider(null);
+    await refetch();
   };
 
   const handleDuplicateProvider = async (provider: Provider) => {
@@ -358,6 +375,7 @@ function App() {
                 onEdit={setEditingProvider}
                 onDelete={setConfirmDelete}
                 onDuplicate={handleDuplicateProvider}
+                onConfigureUsage={handleConfigureUsage}
                 onOpenWebsite={handleOpenWebsite}
                 onCreate={() => setIsAddOpen(true)}
               />
@@ -386,6 +404,15 @@ function App() {
         isProxyTakeover={false}
       />
 
+      {usageProvider && (
+        <UsageScriptModal
+          provider={usageProvider}
+          appId={activeApp}
+          isOpen={Boolean(usageProvider)}
+          onClose={() => setUsageProvider(null)}
+          onSave={(script) => void handleSaveUsageScript(script)}
+        />
+      )}
       <ConfirmDialog
         isOpen={Boolean(confirmDelete)}
         title={t("confirm.deleteProvider")}

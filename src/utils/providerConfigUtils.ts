@@ -417,6 +417,8 @@ export const hasTomlCommonConfigSnippet = (
 const TOML_SECTION_HEADER_PATTERN = /^\s*\[([^\]\r\n]+)\]\s*$/;
 const TOML_BASE_URL_PATTERN =
   /^\s*base_url\s*=\s*(["'])([^"'\r\n]+)\1\s*(?:#.*)?$/;
+const TOML_OPENAI_BASE_URL_PATTERN =
+  /^\s*openai_base_url\s*=\s*(["'])([^"'\r\n]+)\1\s*(?:#.*)?$/;
 const TOML_MODEL_PATTERN = /^\s*model\s*=\s*(["'])([^"'\r\n]+)\1\s*(?:#.*)?$/;
 const TOML_WIRE_API_PATTERN =
   /^\s*wire_api\s*=\s*(["'])([^"'\r\n]+)\1\s*(?:#.*)?$/;
@@ -770,16 +772,26 @@ export const extractCodexBaseUrl = (
       }
     }
 
+    const topLevelEndIndex = getTopLevelEndIndex(lines);
     const topLevelMatch = findTomlAssignmentInRange(
       lines,
       TOML_BASE_URL_PATTERN,
       0,
-      getTopLevelEndIndex(lines),
+      topLevelEndIndex,
     );
     if (topLevelMatch?.value) {
       return topLevelMatch.value;
     }
 
+    const topLevelOpenaiMatch = findTomlAssignmentInRange(
+      lines,
+      TOML_OPENAI_BASE_URL_PATTERN,
+      0,
+      topLevelEndIndex,
+    );
+    if (topLevelOpenaiMatch?.value) {
+      return topLevelOpenaiMatch.value;
+    }
     const fallbackAssignments = getRecoverableBaseUrlAssignments(
       findTomlAssignments(lines, TOML_BASE_URL_PATTERN),
       targetSectionName,

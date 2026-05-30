@@ -9,7 +9,9 @@ use crate::settings;
 use crate::store::AppState;
 use crate::usage_script;
 
-/// Execute usage script and format result (private helper method)
+const TEMPLATE_TYPE_NEWAPI: &str = "newapi";
+const TEMPLATE_TYPE_SUB2API: &str = "sub2api";
+
 pub(crate) async fn execute_and_format_usage_result(
     script_code: &str,
     api_key: &str,
@@ -169,6 +171,17 @@ pub async fn query_usage(
             usage_script.template_type.clone(),
         )
     };
+    if template_type.as_deref() == Some(TEMPLATE_TYPE_NEWAPI)
+        || template_type.as_deref() == Some(TEMPLATE_TYPE_SUB2API)
+    {
+        return Ok(crate::services::api_balance::get_api_usage_balance(
+            template_type.as_deref().unwrap_or(TEMPLATE_TYPE_SUB2API),
+            &base_url,
+            &api_key,
+            timeout,
+        )
+        .await);
+    }
 
     execute_and_format_usage_result(
         &script_code,
@@ -196,7 +209,16 @@ pub async fn test_usage_script(
     user_id: Option<&str>,
     template_type: Option<&str>,
 ) -> Result<UsageResult, AppError> {
-    // Use provided credential parameters directly for testing
+    if template_type == Some(TEMPLATE_TYPE_NEWAPI) || template_type == Some(TEMPLATE_TYPE_SUB2API) {
+        return Ok(crate::services::api_balance::get_api_usage_balance(
+            template_type.unwrap_or(TEMPLATE_TYPE_SUB2API),
+            base_url.unwrap_or(""),
+            api_key.unwrap_or(""),
+            timeout,
+        )
+        .await);
+    }
+
     execute_and_format_usage_result(
         script_code,
         api_key.unwrap_or(""),

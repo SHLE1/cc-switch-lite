@@ -148,4 +148,10 @@ describe("Codex TOML utils", () => {
     expect(extractCodexBaseUrl(input)).toBe("https://api.example.com/v1");
     expect(extractCodexModelName(input)).toBe("gpt-5");
   });
+
+  it("reads lite-managed top-level openai_base_url", () => {
+    const input = 'openai_base_url = "https://api.example.com/v1"\n';
+
+    expect(extractCodexBaseUrl(input)).toBe("https://api.example.com/v1");
+  });
 });

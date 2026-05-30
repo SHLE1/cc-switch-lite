@@ -128,7 +128,10 @@ pub fn read_codex_config_text() -> Result<String, AppError> {
 pub fn patch_codex_openai_base_url_from_config_text(
     config_text_opt: Option<&str>,
 ) -> Result<(), AppError> {
-    match config_text_opt.and_then(extract_openai_base_url_for_live_patch).as_deref() {
+    match config_text_opt
+        .and_then(extract_openai_base_url_for_live_patch)
+        .as_deref()
+    {
         Some(url) => enable_codex_openai_base_url(url),
         None => disable_codex_openai_base_url(),
     }
@@ -137,7 +140,9 @@ pub fn patch_codex_openai_base_url_from_config_text(
 pub fn enable_codex_openai_base_url(base_url: &str) -> Result<(), AppError> {
     let trimmed = base_url.trim();
     if trimmed.is_empty() {
-        return Err(AppError::Config("Codex Base URL cannot be empty".to_string()));
+        return Err(AppError::Config(
+            "Codex Base URL cannot be empty".to_string(),
+        ));
     }
 
     let config_path = get_codex_config_path();
@@ -244,7 +249,10 @@ fn set_managed_openai_base_url(content: &str, base_url: &str) -> String {
         return join_config_lines(&lines, content);
     }
 
-    if let Some(active_index) = lines.iter().position(|line| is_active_openai_base_url_line(line)) {
+    if let Some(active_index) = lines
+        .iter()
+        .position(|line| is_active_openai_base_url_line(line))
+    {
         lines[active_index] = format!("{}{}", PREVIOUS_BASE_URL_PREFIX, lines[active_index]);
         lines.insert(active_index + 1, replacement);
         return join_config_lines(&lines, content);
@@ -283,7 +291,11 @@ fn split_config_lines(content: &str) -> Vec<String> {
     if content.is_empty() {
         Vec::new()
     } else {
-        content.replace("\r\n", "\n").split('\n').map(ToOwned::to_owned).collect()
+        content
+            .replace("\r\n", "\n")
+            .split('\n')
+            .map(ToOwned::to_owned)
+            .collect()
     }
 }
 
@@ -300,7 +312,10 @@ fn join_config_lines(lines: &[String], original: &str) -> String {
 
 fn is_openai_base_url_line(line: &str) -> bool {
     let trimmed = line.trim_start();
-    let without_comment = trimmed.strip_prefix('#').map(str::trim_start).unwrap_or(trimmed);
+    let without_comment = trimmed
+        .strip_prefix('#')
+        .map(str::trim_start)
+        .unwrap_or(trimmed);
     without_comment.starts_with(OPENAI_BASE_URL_KEY)
         && without_comment[OPENAI_BASE_URL_KEY.len()..]
             .trim_start()
@@ -722,7 +737,9 @@ model = "local-model"
 
         let result = set_managed_openai_base_url(original, "https://api.example.com/v1");
 
-        assert!(result.contains("openai_base_url = \"https://api.example.com/v1\" # cc-switch managed"));
+        assert!(
+            result.contains("openai_base_url = \"https://api.example.com/v1\" # cc-switch managed")
+        );
         assert!(result.contains("model = \"gpt-5\""));
         assert!(result.contains("[profiles.work]"));
         assert!(result.contains("model = \"local-model\""));
@@ -734,7 +751,9 @@ model = "local-model"
 
         let result = set_managed_openai_base_url(original, "https://new.example/v1");
 
-        assert!(result.contains("# cc-switch previous: openai_base_url = \"https://old.example/v1\""));
+        assert!(
+            result.contains("# cc-switch previous: openai_base_url = \"https://old.example/v1\"")
+        );
         assert!(result.contains("openai_base_url = \"https://new.example/v1\" # cc-switch managed"));
         assert!(result.contains("model = \"gpt-5\""));
     }
@@ -745,8 +764,12 @@ model = "local-model"
 
         let result = comment_managed_openai_base_url(original);
 
-        assert!(result.contains("# openai_base_url = \"https://new.example/v1\" # cc-switch managed"));
-        assert!(result.contains("# cc-switch previous: openai_base_url = \"https://old.example/v1\""));
+        assert!(
+            result.contains("# openai_base_url = \"https://new.example/v1\" # cc-switch managed")
+        );
+        assert!(
+            result.contains("# cc-switch previous: openai_base_url = \"https://old.example/v1\"")
+        );
         assert!(result.contains("model = \"gpt-5\""));
     }
 
@@ -814,7 +837,8 @@ wire_api = "responses"
             .expect("write live");
 
             let after = std::fs::read_to_string(&path).expect("read config");
-            assert!(after.contains("openai_base_url = \"https://vendor.example/v1\" # cc-switch managed"));
+            assert!(after
+                .contains("openai_base_url = \"https://vendor.example/v1\" # cc-switch managed"));
             assert!(after.contains("# user header"));
             assert!(after.contains("model = \"gpt-5\""));
             assert!(after.contains("[profiles.work]"));
@@ -840,14 +864,13 @@ model = "gpt-4.1"
 "#;
             std::fs::write(&path, original).expect("seed config");
 
-            write_codex_live_atomic(
-                &serde_json::json!({"tokens": {"id_token": "oauth"}}),
-                None,
-            )
-            .expect("write oauth live");
+            write_codex_live_atomic(&serde_json::json!({"tokens": {"id_token": "oauth"}}), None)
+                .expect("write oauth live");
 
             let after = std::fs::read_to_string(&path).expect("read config");
-            assert!(after.contains("# openai_base_url = \"https://managed.example/v1\" # cc-switch managed"));
+            assert!(after.contains(
+                "# openai_base_url = \"https://managed.example/v1\" # cc-switch managed"
+            ));
             assert!(after.contains("model = \"gpt-5\""));
             assert!(after.contains("[profiles.work]"));
         });

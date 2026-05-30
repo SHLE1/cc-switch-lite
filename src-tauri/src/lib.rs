@@ -1010,33 +1010,29 @@ pub fn run() {
                 }
             }
 
-            // 静默启动：根据设置决定是否显示主窗口
-            let settings = crate::settings::get_settings();
+            // Lite: first launch should always show the main window. Closing the window may
+            // still minimize to tray, but startup must not silently hide in the tray.
             if let Some(window) = app.get_webview_window("main") {
                 // 在窗口首次显示前同步装饰状态，避免前端加载后再切换导致标题栏闪烁
                 // 仅 Linux 生效：解决 Wayland 下系统窗口按钮不可用的问题
                 #[cfg(target_os = "linux")]
-                let _ = window.set_decorations(!settings.use_app_window_controls);
-                if settings.silent_startup {
-                    // 静默启动模式：保持窗口隐藏
-                    let _ = window.hide();
-                    #[cfg(target_os = "windows")]
-                    let _ = window.set_skip_taskbar(true);
-                    #[cfg(target_os = "macos")]
-                    tray::apply_tray_policy(app.handle(), false);
-                    log::info!("静默启动模式：主窗口已隐藏");
-                } else {
-                    // 正常启动模式：显示窗口
-                    let _ = window.show();
-                    log::info!("正常启动模式：主窗口已显示");
+                {
+                    let settings = crate::settings::get_settings();
+                    let _ = window.set_decorations(!settings.use_app_window_controls);
+                }
+                let _ = window.unminimize();
+                let _ = window.show();
+                let _ = window.set_focus();
+                #[cfg(target_os = "macos")]
+                tray::apply_tray_policy(app.handle(), true);
+                log::info!("主窗口已在启动时显示");
 
-                    // Linux: 解决首次启动 UI 无响应问题（Tauri #10746 + wry #637）。
-                    // 启动时 webview 未获取焦点 + surface 尺寸协商失败，导致点击无效。
-                    // 这里做 set_focus + 伪 resize，等价于无视觉版本的"最大化-还原"。
-                    #[cfg(target_os = "linux")]
-                    {
-                        linux_fix::nudge_main_window(window.clone());
-                    }
+                // Linux: 解决首次启动 UI 无响应问题（Tauri #10746 + wry #637）。
+                // 启动时 webview 未获取焦点 + surface 尺寸协商失败，导致点击无效。
+                // 这里做 set_focus + 伪 resize，等价于无视觉版本的“最大化-还原”。
+                #[cfg(target_os = "linux")]
+                {
+                    linux_fix::nudge_main_window(window.clone());
                 }
             }
 
