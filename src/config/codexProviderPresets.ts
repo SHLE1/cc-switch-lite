@@ -17,8 +17,6 @@ export interface CodexProviderPreset {
   auth: Record<string, any>;
   config: string;
   isOfficial?: boolean;
-  isPartner?: boolean;
-  partnerPromotionKey?: string;
   category?: ProviderCategory;
   isCustomTemplate?: boolean;
   endpointCandidates?: string[];

@@ -20,7 +20,7 @@ pub struct OmoLocalFileData {
 type OmoProfileData = (Option<Value>, Option<Value>, Option<Value>);
 
 // ── Variant descriptor ─────────────────────────────────────────
-
+#[allow(dead_code)]
 pub struct OmoVariant {
     pub preferred_filename: &'static str,
     pub config_candidates: &'static [&'static str],
@@ -32,7 +32,6 @@ pub struct OmoVariant {
     pub label: &'static str,
     pub import_label: &'static str,
 }
-
 pub const STANDARD: OmoVariant = OmoVariant {
     preferred_filename: "oh-my-openagent.jsonc",
     config_candidates: &[
@@ -242,6 +241,8 @@ impl OmoService {
         Value::Object(result)
     }
 
+    #[allow(dead_code)]
+    #[cfg(test)]
     pub fn import_from_local(
         state: &AppState,
         v: &OmoVariant,

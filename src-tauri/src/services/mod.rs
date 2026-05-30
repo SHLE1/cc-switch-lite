@@ -17,12 +17,10 @@ pub mod session_usage_gemini;
 pub mod skill;
 pub mod speedtest;
 pub mod sql_helpers;
-pub mod stream_check;
 pub mod subscription;
 pub mod usage_cache;
 pub mod usage_stats;
 pub mod webdav;
-pub mod webdav_auto_sync;
 pub mod webdav_sync;
 
 pub use config::ConfigService;

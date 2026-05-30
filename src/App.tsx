@@ -3,7 +3,7 @@ import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { Maximize2, Minimize2, Minus, Plus, X } from "lucide-react";
-import type { Provider, UsageScript, VisibleApps } from "@/types";
+import type { Provider, VisibleApps } from "@/types";
 import { useProvidersQuery, useSettingsQuery } from "@/lib/query";
 import {
   providersApi,
@@ -25,7 +25,6 @@ import { ProviderList } from "@/components/providers/ProviderList";
 import { AddProviderDialog } from "@/components/providers/AddProviderDialog";
 import { EditProviderDialog } from "@/components/providers/EditProviderDialog";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
-import UsageScriptModal from "@/components/UsageScriptModal";
 import { Button } from "@/components/ui/button";
 
 const DEFAULT_DRAG_BAR_HEIGHT = isWindows() || isLinux() ? 0 : 28;
@@ -45,7 +44,6 @@ function App() {
   const [isWindowMaximized, setIsWindowMaximized] = useState(false);
   const [editingProvider, setEditingProvider] = useState<Provider | null>(null);
   const [confirmDelete, setConfirmDelete] = useState<Provider | null>(null);
-  const [usageProvider, setUsageProvider] = useState<Provider | null>(null);
   useEffect(() => {
     if (!SUPPORTED_APPS.includes(activeApp)) {
       setActiveApp("codex");
@@ -62,12 +60,7 @@ function App() {
   const visibleApps: VisibleApps = useMemo(
     () => ({
       claude: true,
-      "claude-desktop": false,
       codex: true,
-      gemini: false,
-      opencode: false,
-      openclaw: false,
-      hermes: false,
     }),
     [],
   );
@@ -76,8 +69,8 @@ function App() {
   const providers = useMemo(() => data?.providers ?? {}, [data]);
   const currentProviderId = data?.currentProviderId ?? "";
 
-  const { addProvider, updateProvider, switchProvider, deleteProvider, saveUsageScript } =
-    useProviderActions(activeApp, false, false);
+  const { addProvider, updateProvider, switchProvider, deleteProvider } =
+    useProviderActions(activeApp);
 
   useEffect(() => {
     let unsubscribe: (() => void) | undefined;
@@ -183,16 +176,7 @@ function App() {
     setConfirmDelete(null);
   };
 
-  const handleConfigureUsage = (provider: Provider) => {
-    setUsageProvider(provider);
-  };
 
-  const handleSaveUsageScript = async (script: UsageScript) => {
-    if (!usageProvider) return;
-    await saveUsageScript(usageProvider, script);
-    setUsageProvider(null);
-    await refetch();
-  };
 
   const handleDuplicateProvider = async (provider: Provider) => {
     const duplicatedProvider: Omit<Provider, "id" | "createdAt"> = {
@@ -369,13 +353,10 @@ function App() {
                 currentProviderId={currentProviderId}
                 appId={activeApp}
                 isLoading={isLoading}
-                isProxyRunning={false}
-                isProxyTakeover={false}
                 onSwitch={switchProvider}
                 onEdit={setEditingProvider}
                 onDelete={setConfirmDelete}
                 onDuplicate={handleDuplicateProvider}
-                onConfigureUsage={handleConfigureUsage}
                 onOpenWebsite={handleOpenWebsite}
                 onCreate={() => setIsAddOpen(true)}
               />
@@ -401,18 +382,8 @@ function App() {
         }}
         onSubmit={handleEditProvider}
         appId={activeApp}
-        isProxyTakeover={false}
       />
 
-      {usageProvider && (
-        <UsageScriptModal
-          provider={usageProvider}
-          appId={activeApp}
-          isOpen={Boolean(usageProvider)}
-          onClose={() => setUsageProvider(null)}
-          onSave={(script) => void handleSaveUsageScript(script)}
-        />
-      )}
       <ConfirmDialog
         isOpen={Boolean(confirmDelete)}
         title={t("confirm.deleteProvider")}

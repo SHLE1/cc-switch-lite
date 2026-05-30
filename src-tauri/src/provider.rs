@@ -347,6 +347,9 @@ pub struct ProviderMeta {
     /// - "github_copilot": GitHub Copilot 供应商
     #[serde(rename = "providerType", skip_serializing_if = "Option::is_none")]
     pub provider_type: Option<String>,
+    /// API key 余额查询模板。"unsupported" 表示该供应商不显示、不请求余额。
+    #[serde(rename = "balanceTemplate", skip_serializing_if = "Option::is_none")]
+    pub balance_template: Option<String>,
     /// GitHub Copilot 关联账号 ID（仅 github_copilot 供应商使用）
     /// 用于多账号支持，关联到特定的 GitHub 账号
     #[serde(rename = "githubAccountId", skip_serializing_if = "Option::is_none")]

@@ -25,12 +25,13 @@ describe("mergeProviderMeta", () => {
     });
   });
 
-  it("overrides custom endpoints but preserves other fields", () => {
+  it("overrides custom endpoints but preserves quota/auth fields", () => {
     const initial: ProviderMeta = {
-      usage_script: {
-        enabled: true,
-        language: "javascript",
-        code: "console.log(1);",
+      providerType: "codex_oauth",
+      authBinding: {
+        source: "managed_account",
+        authProvider: "codex_oauth",
+        accountId: "account-1",
       },
       custom_endpoints: {
         "https://old.com": buildEndpoint("https://old.com"),
@@ -42,7 +43,8 @@ describe("mergeProviderMeta", () => {
     });
 
     expect(result).toEqual({
-      usage_script: initial.usage_script,
+      providerType: "codex_oauth",
+      authBinding: initial.authBinding,
       custom_endpoints: {
         "https://new.com": buildEndpoint("https://new.com"),
       },
@@ -51,11 +53,8 @@ describe("mergeProviderMeta", () => {
 
   it("removes custom endpoints when result is empty but keeps other meta", () => {
     const initial: ProviderMeta = {
-      usage_script: {
-        enabled: true,
-        language: "javascript",
-        code: "console.log(1);",
-      },
+      providerType: "github_copilot",
+      githubAccountId: "account-1",
       custom_endpoints: {
         "https://example.com": buildEndpoint("https://example.com"),
       },
@@ -64,7 +63,8 @@ describe("mergeProviderMeta", () => {
     const result = mergeProviderMeta(initial, null);
 
     expect(result).toEqual({
-      usage_script: initial.usage_script,
+      providerType: "github_copilot",
+      githubAccountId: "account-1",
     });
   });
 

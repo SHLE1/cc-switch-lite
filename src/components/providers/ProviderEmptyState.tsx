@@ -10,13 +10,11 @@ interface ProviderEmptyStateProps {
 }
 
 export function ProviderEmptyState({
-  appId,
   onCreate,
   onImport,
 }: ProviderEmptyStateProps) {
   const { t } = useTranslation();
-  const showSnippetHint =
-    appId === "claude" || appId === "codex" || appId === "gemini";
+  const showSnippetHint = true;
 
   return (
     <div className="flex flex-col items-center justify-center rounded-lg border border-dashed border-border p-10 text-center">
@@ -36,11 +34,7 @@ export function ProviderEmptyState({
         {onImport && (
           <Button onClick={onImport}>
             <Download className="mr-2 h-4 w-4" />
-            {appId === "claude-desktop"
-              ? t("provider.importFromClaude", {
-                  defaultValue: "将 Claude Code 中已有的供应商导入",
-                })
-              : t("provider.importCurrent")}
+            {t("provider.importCurrent")}
           </Button>
         )}
         {onCreate && (

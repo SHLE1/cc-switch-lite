@@ -1,32 +1,14 @@
-import { BarChart3, Check, Copy, Edit, Play, Trash2 } from "lucide-react";
+import { Check, Copy, Edit, Play, Trash2 } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import type { AppId } from "@/lib/api";
 
 interface ProviderActionsProps {
-  appId?: AppId;
   isCurrent: boolean;
-  isInConfig?: boolean;
-  isTesting?: boolean;
-  isProxyTakeover?: boolean;
-  isOmo?: boolean;
   onSwitch: () => void;
   onEdit: () => void;
   onDuplicate: () => void;
-  onTest?: () => void;
-  onConfigureUsage?: () => void;
   onDelete: () => void;
-  onRemoveFromConfig?: () => void;
-  onDisableOmo?: () => void;
-  onOpenTerminal?: () => void;
-  isAutoFailoverEnabled?: boolean;
-  isInFailoverQueue?: boolean;
-  onToggleFailover?: (enabled: boolean) => void;
-  isOfficialBlockedByProxy?: boolean;
-  isReadOnly?: boolean;
-  isDefaultModel?: boolean;
-  onSetAsDefault?: () => void;
 }
 
 export function ProviderActions({
@@ -34,23 +16,18 @@ export function ProviderActions({
   onSwitch,
   onEdit,
   onDuplicate,
-  onConfigureUsage,
   onDelete,
-  isReadOnly = false,
 }: ProviderActionsProps) {
   const { t } = useTranslation();
   const iconButtonClass = "h-8 w-8 p-1";
-  const canDelete = !isReadOnly && !isCurrent;
-  const readOnlyHint = t("provider.readOnly", {
-    defaultValue: "此供应商只读",
-  });
+  const canDelete = !isCurrent;
 
   return (
     <div className="flex items-center gap-1.5">
       <Button
         size="sm"
         variant={isCurrent ? "secondary" : "default"}
-        onClick={isCurrent ? undefined : onSwitch}
+        onClick={onSwitch}
         disabled={isCurrent}
         className={cn(
           "w-[4.5rem] px-2.5",
@@ -59,59 +36,41 @@ export function ProviderActions({
         )}
       >
         {isCurrent ? <Check className="h-4 w-4" /> : <Play className="h-4 w-4" />}
-        {isCurrent ? t("provider.inUse") : t("provider.enable")}
+        {isCurrent
+          ? t("provider.inUse", { defaultValue: "已启用" })
+          : t("provider.enable", { defaultValue: "启用" })}
       </Button>
 
       <div className="flex items-center gap-1">
         <Button
-          size="icon"
           variant="ghost"
-          onClick={isReadOnly ? undefined : onEdit}
-          disabled={isReadOnly}
-          title={isReadOnly ? readOnlyHint : t("common.edit")}
-          className={cn(
-            iconButtonClass,
-            isReadOnly && "opacity-40 cursor-not-allowed text-muted-foreground",
-          )}
+          size="icon"
+          className={iconButtonClass}
+          onClick={onEdit}
+          title={t("provider.edit", { defaultValue: "编辑" })}
         >
           <Edit className="h-4 w-4" />
         </Button>
-
         <Button
-          size="icon"
           variant="ghost"
-          onClick={onDuplicate}
-          title={t("provider.duplicate")}
+          size="icon"
           className={iconButtonClass}
+          onClick={onDuplicate}
+          title={t("provider.duplicate", { defaultValue: "复制" })}
         >
           <Copy className="h-4 w-4" />
         </Button>
-
         <Button
-          size="icon"
           variant="ghost"
-          onClick={onConfigureUsage || undefined}
-          title={t("provider.configureUsage", {
-            defaultValue: "配置用量查询",
-          })}
-          className={cn(
-            iconButtonClass,
-            !onConfigureUsage &&
-              "opacity-40 cursor-not-allowed text-muted-foreground",
-          )}
-        >
-          <BarChart3 className="h-4 w-4" />
-        </Button>
-        <Button
           size="icon"
-          variant="ghost"
-          onClick={canDelete ? onDelete : undefined}
-          title={isReadOnly ? readOnlyHint : t("common.delete")}
           className={cn(
             iconButtonClass,
             canDelete && "hover:text-red-500 dark:hover:text-red-400",
             !canDelete && "opacity-40 cursor-not-allowed text-muted-foreground",
           )}
+          onClick={canDelete ? onDelete : undefined}
+          disabled={!canDelete}
+          title={t("provider.delete", { defaultValue: "删除" })}
         >
           <Trash2 className="h-4 w-4" />
         </Button>

@@ -14,7 +14,7 @@ export interface TemplateValueConfig {
 }
 
 export interface PresetTheme {
-  icon?: "claude" | "codex" | "gemini" | "generic";
+  icon?: "claude" | "codex" | "generic";
   backgroundColor?: string;
   textColor?: string;
 }
@@ -26,8 +26,6 @@ export interface ProviderPreset {
   apiKeyUrl?: string;
   settingsConfig: object;
   isOfficial?: boolean;
-  isPartner?: boolean;
-  partnerPromotionKey?: string;
   category?: ProviderCategory;
   apiKeyField?: "ANTHROPIC_AUTH_TOKEN" | "ANTHROPIC_API_KEY";
   templateValues?: Record<string, TemplateValueConfig>;
@@ -35,11 +33,7 @@ export interface ProviderPreset {
   theme?: PresetTheme;
   icon?: string;
   iconColor?: string;
-  apiFormat?:
-    | "anthropic"
-    | "openai_chat"
-    | "openai_responses"
-    | "gemini_native";
+  apiFormat?: "anthropic" | "openai_chat" | "openai_responses";
   providerType?: "github_copilot" | "codex_oauth";
   requiresOAuth?: boolean;
   hidden?: boolean;

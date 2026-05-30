@@ -3,28 +3,61 @@ import { useTranslation } from "react-i18next";
 import { Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { FullScreenPanel } from "@/components/common/FullScreenPanel";
-import type { Provider, CustomEndpoint } from "@/types";
+import type { CustomEndpoint, Provider } from "@/types";
 import type { AppId } from "@/lib/api";
 import {
   ProviderForm,
   type ProviderFormValues,
 } from "@/components/providers/forms/ProviderForm";
-import { providerPresets } from "@/config/claudeProviderPresets";
-import { codexProviderPresets } from "@/config/codexProviderPresets";
-import { extractCodexBaseUrl } from "@/utils/providerConfigUtils";
-import type { OpenClawSuggestedDefaults } from "@/config/openclawProviderPresets";
 
 interface AddProviderDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   appId: AppId;
-  onSubmit: (
-    provider: Omit<Provider, "id"> & {
-      providerKey?: string;
-      suggestedDefaults?: OpenClawSuggestedDefaults;
-    },
-  ) => Promise<void> | void;
+  onSubmit: (provider: Omit<Provider, "id">) => Promise<void> | void;
 }
+
+const customEndpointsFromBaseUrl = (
+  settingsConfig: Record<string, unknown>,
+): Record<string, CustomEndpoint> | undefined => {
+  const env = settingsConfig.env;
+  if (!env || typeof env !== "object" || Array.isArray(env)) {
+    return undefined;
+  }
+
+  const baseUrl = (env as Record<string, unknown>).ANTHROPIC_BASE_URL;
+  if (typeof baseUrl !== "string" || !baseUrl.trim()) {
+    return undefined;
+  }
+
+  const url = baseUrl.trim();
+  return {
+    [url]: {
+      url,
+      addedAt: Date.now(),
+      lastUsed: undefined,
+    },
+  };
+};
+
+const providerMetaFromValues = (
+  values: ProviderFormValues,
+  settingsConfig: Record<string, unknown>,
+) => {
+  if (values.meta?.custom_endpoints) {
+    return values.meta;
+  }
+
+  const customEndpoints = customEndpointsFromBaseUrl(settingsConfig);
+  if (!customEndpoints) {
+    return values.meta;
+  }
+
+  return {
+    ...values.meta,
+    custom_endpoints: customEndpoints,
+  };
+};
 
 export function AddProviderDialog({
   open,
@@ -41,80 +74,21 @@ export function AddProviderDialog({
         string,
         unknown
       >;
+      const meta = providerMetaFromValues(values, parsedConfig);
 
-      const providerData: Omit<Provider, "id"> & {
-        providerKey?: string;
-        suggestedDefaults?: OpenClawSuggestedDefaults;
-      } = {
+      const providerData: Omit<Provider, "id"> = {
         name: values.name.trim(),
         notes: values.notes?.trim() || undefined,
         websiteUrl: values.websiteUrl?.trim() || undefined,
         settingsConfig: parsedConfig,
-        icon: values.icon?.trim() || undefined,
-        iconColor: values.iconColor?.trim() || undefined,
-        ...(values.presetCategory ? { category: values.presetCategory } : {}),
-        ...(values.meta ? { meta: values.meta } : {}),
+        category: values.presetCategory ?? "custom",
+        meta,
       };
-
-      if (!providerData.meta?.custom_endpoints && values.presetCategory !== "omo") {
-        const urlSet = new Set<string>();
-        const addUrl = (rawUrl?: string) => {
-          const url = (rawUrl || "").trim().replace(/\/+$/, "");
-          if (url && url.startsWith("http")) {
-            urlSet.add(url);
-          }
-        };
-
-        if (values.presetId && appId === "claude") {
-          const presetIndex = parseInt(values.presetId.replace("claude-", ""));
-          if (!Number.isNaN(presetIndex)) {
-            providerPresets[presetIndex]?.endpointCandidates?.forEach(addUrl);
-          }
-        } else if (values.presetId && appId === "codex") {
-          const presetIndex = parseInt(values.presetId.replace("codex-", ""));
-          if (!Number.isNaN(presetIndex)) {
-            codexProviderPresets[presetIndex]?.endpointCandidates?.forEach(addUrl);
-          }
-        }
-
-        if (appId === "claude") {
-          const env = parsedConfig.env as Record<string, unknown> | undefined;
-          if (typeof env?.ANTHROPIC_BASE_URL === "string") {
-            addUrl(env.ANTHROPIC_BASE_URL);
-          }
-        } else if (appId === "codex") {
-          const config = parsedConfig.config;
-          if (typeof config === "string") {
-            const extractedBaseUrl = extractCodexBaseUrl(config);
-            if (extractedBaseUrl) {
-              addUrl(extractedBaseUrl);
-            }
-          }
-        }
-
-        const urls = Array.from(urlSet);
-        if (urls.length > 0) {
-          const now = Date.now();
-          const customEndpoints: Record<string, CustomEndpoint> = {};
-          urls.forEach((url) => {
-            customEndpoints[url] = {
-              url,
-              addedAt: now,
-              lastUsed: undefined,
-            };
-          });
-
-          providerData.meta = {
-            ...(providerData.meta ?? {}),
-            custom_endpoints: customEndpoints,
-          };
-        }
-      }
 
       await onSubmit(providerData);
       onOpenChange(false);
     },
-    [appId, onSubmit, onOpenChange],
+    [onSubmit, onOpenChange],
   );
 
   const footer = (
