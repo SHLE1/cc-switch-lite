@@ -24,7 +24,7 @@ pub(crate) struct OfficialProviderSeed {
     pub settings_config_json: &'static str,
 }
 
-/// Claude / Claude Desktop / Codex / Gemini 的官方预设。
+/// Claude / Claude Desktop / Codex 的官方预设。
 ///
 /// id 固定，便于幂等检查；name 直接用英文原名（与前端预设一致），不做 i18n。
 pub(crate) const OFFICIAL_SEEDS: &[OfficialProviderSeed] = &[
@@ -57,16 +57,6 @@ pub(crate) const OFFICIAL_SEEDS: &[OfficialProviderSeed] = &[
         icon_color: "#00A67E",
         // 空 auth + 空 config 让用户走 ChatGPT Plus/Pro OAuth
         settings_config_json: r#"{"auth":{},"config":""}"#,
-    },
-    OfficialProviderSeed {
-        id: "gemini-official",
-        app_type: AppType::Gemini,
-        name: "Google Official",
-        website_url: "https://ai.google.dev/",
-        icon: "gemini",
-        icon_color: "#4285F4",
-        // 空 env + 空 config 让用户走 Google OAuth
-        settings_config_json: r#"{"env":{},"config":{}}"#,
     },
 ];
 

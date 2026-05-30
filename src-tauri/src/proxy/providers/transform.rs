@@ -111,7 +111,6 @@ pub fn resolve_reasoning_effort(body: &Value) -> Option<&'static str> {
     }
 }
 
-
 /// Anthropic 请求 → OpenAI Chat Completions 请求
 ///
 /// `preserve_reasoning_content` 仅用于明确需要 Moonshot/Kimi/DeepSeek
@@ -686,4 +685,3 @@ pub fn openai_to_anthropic(body: Value) -> Result<Value, ProxyError> {
 
     Ok(result)
 }
-

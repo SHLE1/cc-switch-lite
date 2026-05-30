@@ -102,7 +102,7 @@ pub struct ToolVersion {
     wsl_distro: Option<String>,
 }
 
-const VALID_TOOLS: [&str; 4] = ["claude", "codex", "gemini", "opencode"];
+const VALID_TOOLS: [&str; 2] = ["claude", "codex"];
 
 #[derive(Debug, Clone, serde::Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -212,8 +212,6 @@ async fn get_single_tool_version_impl(
     let latest_version = match tool {
         "claude" => fetch_npm_latest_version(&client, "@anthropic-ai/claude-code").await,
         "codex" => fetch_npm_latest_version(&client, "@openai/codex").await,
-        "gemini" => fetch_npm_latest_version(&client, "@google/gemini-cli").await,
-        "opencode" => fetch_github_latest_version(&client, "anomalyco/opencode").await,
         _ => None,
     };
 
@@ -377,7 +375,7 @@ fn try_get_version_wsl(
 
     // 防御性断言：tool 只能是预定义的值
     debug_assert!(
-        ["claude", "codex", "gemini", "opencode"].contains(&tool),
+        VALID_TOOLS.contains(&tool),
         "unexpected tool name: {tool}"
     );
 
@@ -712,8 +710,6 @@ fn wsl_distro_for_tool(tool: &str) -> Option<String> {
     let override_dir = match tool {
         "claude" => crate::settings::get_claude_override_dir(),
         "codex" => crate::settings::get_codex_override_dir(),
-        "gemini" => crate::settings::get_gemini_override_dir(),
-        "opencode" => crate::settings::get_opencode_override_dir(),
         _ => None,
     }?;
 
@@ -798,10 +794,8 @@ fn extract_env_vars_from_config(
             }
         }
 
-        // 处理 base_url: 根据应用类型添加对应的环境变量
         let base_url_key = match app_type {
             AppType::Claude | AppType::ClaudeDesktop => Some("ANTHROPIC_BASE_URL"),
-            AppType::Gemini => Some("GOOGLE_GEMINI_BASE_URL"),
             _ => None,
         };
 
@@ -819,12 +813,6 @@ fn extract_env_vars_from_config(
         }
     }
 
-    // Gemini 使用 api_key 字段转换为 GEMINI_API_KEY
-    if *app_type == AppType::Gemini {
-        if let Some(api_key) = obj.get("api_key").and_then(|v| v.as_str()) {
-            env_vars.push(("GEMINI_API_KEY".to_string(), api_key.to_string()));
-        }
-    }
 
     env_vars
 }

@@ -222,13 +222,7 @@ command = "echo"
                 "type": "stdio",
                 "command": "echo"
             }),
-            apps: McpApps {
-                claude: false,
-                codex: true,
-                gemini: false,
-                opencode: false,
-                hermes: false,
-            },
+            apps: McpApps { claude: false, codex: true },
             description: None,
             homepage: None,
             docs: None,
@@ -319,9 +313,6 @@ fn set_mcp_enabled_for_codex_writes_live_config() {
             apps: McpApps {
                 claude: false,
                 codex: false, // 初始未启用
-                gemini: false,
-                opencode: false,
-                hermes: false,
             },
             description: None,
             homepage: None,
@@ -381,13 +372,7 @@ fn enabling_codex_mcp_skips_when_codex_dir_missing() {
                 "type": "stdio",
                 "command": "echo"
             }),
-            apps: McpApps {
-                claude: false,
-                codex: false,
-                gemini: false,
-                opencode: false,
-                hermes: false,
-            },
+            apps: McpApps { claude: false, codex: false },
             description: None,
             homepage: None,
             docs: None,
@@ -426,13 +411,7 @@ fn upsert_mcp_server_disabling_app_removes_from_claude_live_config() {
                 "type": "stdio",
                 "command": "echo"
             }),
-            apps: McpApps {
-                claude: true,
-                codex: false,
-                gemini: false,
-                opencode: false,
-                hermes: false,
-            },
+            apps: McpApps { claude: true, codex: false },
             description: None,
             homepage: None,
             docs: None,
@@ -460,13 +439,7 @@ fn upsert_mcp_server_disabling_app_removes_from_claude_live_config() {
                 "type": "stdio",
                 "command": "echo"
             }),
-            apps: McpApps {
-                claude: false,
-                codex: false,
-                gemini: false,
-                opencode: false,
-                hermes: false,
-            },
+            apps: McpApps { claude: false, codex: false },
             description: None,
             homepage: None,
             docs: None,
@@ -528,95 +501,6 @@ command = "echo"
     assert!(entry.apps.codex, "shared should enable Codex");
 }
 
-#[test]
-fn import_mcp_from_gemini_sse_url_only_is_valid() {
-    let _guard = test_mutex().lock().expect("acquire test mutex");
-    reset_test_fs();
-    let home = ensure_test_home();
-
-    // Gemini MCP 位于 ~/.gemini/settings.json
-    let gemini_dir = home.join(".gemini");
-    fs::create_dir_all(&gemini_dir).expect("create gemini dir");
-    let settings_path = gemini_dir.join("settings.json");
-
-    // Gemini SSE：只包含 url（Gemini 不使用 type 字段）
-    let gemini_settings = json!({
-        "mcpServers": {
-            "sse-server": {
-                "url": "https://example.com/sse"
-            }
-        }
-    });
-    fs::write(
-        &settings_path,
-        serde_json::to_string_pretty(&gemini_settings).expect("serialize gemini settings"),
-    )
-    .expect("seed ~/.gemini/settings.json");
-
-    let state = support::create_test_state().expect("create test state");
-    let changed = McpService::import_from_gemini(&state).expect("import from gemini");
-    assert!(changed > 0, "should import at least 1 server");
-
-    let servers = state.db.get_all_mcp_servers().expect("get all mcp servers");
-    let entry = servers.get("sse-server").expect("sse-server exists");
-    assert!(entry.apps.gemini, "imported server should enable Gemini");
-    assert_eq!(
-        entry.server.get("type").and_then(|v| v.as_str()),
-        Some("sse"),
-        "Gemini url-only server should be normalized to type=sse in unified structure"
-    );
-}
-
-#[test]
-fn enabling_gemini_mcp_skips_when_gemini_dir_missing() {
-    use support::create_test_state;
-
-    let _guard = test_mutex().lock().expect("acquire test mutex");
-    reset_test_fs();
-    let home = ensure_test_home();
-
-    // 确认 Gemini 配置目录不存在（模拟“未安装/未运行过 Gemini CLI”）
-    assert!(
-        !home.join(".gemini").exists(),
-        "~/.gemini should not exist in fresh test environment"
-    );
-
-    let state = create_test_state().expect("create test state");
-
-    // 先插入一个未启用 Gemini 的 MCP 服务器（避免 upsert 触发同步）
-    McpService::upsert_server(
-        &state,
-        McpServer {
-            id: "gemini-server".to_string(),
-            name: "Gemini Server".to_string(),
-            server: json!({
-                "type": "sse",
-                "url": "https://example.com/sse"
-            }),
-            apps: McpApps {
-                claude: false,
-                codex: false,
-                gemini: false,
-                opencode: false,
-                hermes: false,
-            },
-            description: None,
-            homepage: None,
-            docs: None,
-            tags: Vec::new(),
-        },
-    )
-    .expect("insert server without syncing");
-
-    // 启用 Gemini：目录缺失时应跳过写入（不创建 ~/.gemini/settings.json）
-    McpService::toggle_app(&state, "gemini-server", AppType::Gemini, true)
-        .expect("toggle gemini should succeed even when ~/.gemini is missing");
-
-    assert!(
-        !home.join(".gemini").exists(),
-        "~/.gemini should still not exist after skipped sync"
-    );
-}
 
 #[test]
 fn enabling_claude_mcp_skips_when_claude_config_absent() {
@@ -648,13 +532,7 @@ fn enabling_claude_mcp_skips_when_claude_config_absent() {
                 "type": "stdio",
                 "command": "echo"
             }),
-            apps: McpApps {
-                claude: false,
-                codex: false,
-                gemini: false,
-                opencode: false,
-                hermes: false,
-            },
+            apps: McpApps { claude: false, codex: false },
             description: None,
             homepage: None,
             docs: None,
@@ -709,13 +587,7 @@ fn sync_all_enabled_removes_known_disabled_but_preserves_unknown_live_entries() 
                 "type": "stdio",
                 "command": "echo"
             }),
-            apps: McpApps {
-                claude: false,
-                codex: false,
-                gemini: false,
-                opencode: false,
-                hermes: false,
-            },
+            apps: McpApps { claude: false, codex: false },
             description: None,
             homepage: None,
             docs: None,
@@ -731,13 +603,7 @@ fn sync_all_enabled_removes_known_disabled_but_preserves_unknown_live_entries() 
                 "type": "stdio",
                 "command": "managed"
             }),
-            apps: McpApps {
-                claude: true,
-                codex: false,
-                gemini: false,
-                opencode: false,
-                hermes: false,
-            },
+            apps: McpApps { claude: true, codex: false },
             description: None,
             homepage: None,
             docs: None,

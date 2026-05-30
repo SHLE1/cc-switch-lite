@@ -118,19 +118,19 @@ fn test_infer_homepage() {
 // =============================================================================
 
 #[test]
-fn test_build_gemini_provider_with_model() {
+fn test_build_codex_provider_with_model() {
     use super::provider::build_provider_from_request;
 
     let request = DeepLinkImportRequest {
         version: "v1".to_string(),
         resource: "provider".to_string(),
-        app: Some("gemini".to_string()),
-        name: Some("Test Gemini".to_string()),
+        app: Some("codex".to_string()),
+        name: Some("Test Codex".to_string()),
         homepage: Some("https://example.com".to_string()),
-        endpoint: Some("https://api.example.com".to_string()),
+        endpoint: Some("https://api.example.com/v1".to_string()),
         api_key: Some("test-api-key".to_string()),
         icon: None,
-        model: Some("gemini-2.0-flash".to_string()),
+        model: Some("gpt-5".to_string()),
         notes: None,
         haiku_model: None,
         sonnet_model: None,
@@ -154,66 +154,19 @@ fn test_build_gemini_provider_with_model() {
         usage_auto_interval: None,
     };
 
-    let provider = build_provider_from_request(&AppType::Gemini, &request).unwrap();
+    let provider = build_provider_from_request(&AppType::Codex, &request).unwrap();
 
-    // Verify provider basic info
-    assert_eq!(provider.name, "Test Gemini");
+    assert_eq!(provider.name, "Test Codex");
     assert_eq!(
         provider.website_url,
         Some("https://example.com".to_string())
     );
 
-    // Verify settings_config structure
-    let env = provider.settings_config["env"].as_object().unwrap();
-    assert_eq!(env["GEMINI_API_KEY"], "test-api-key");
-    assert_eq!(env["GOOGLE_GEMINI_BASE_URL"], "https://api.example.com");
-    assert_eq!(env["GEMINI_MODEL"], "gemini-2.0-flash");
-}
-
-#[test]
-fn test_build_gemini_provider_without_model() {
-    use super::provider::build_provider_from_request;
-
-    let request = DeepLinkImportRequest {
-        version: "v1".to_string(),
-        resource: "provider".to_string(),
-        app: Some("gemini".to_string()),
-        name: Some("Test Gemini".to_string()),
-        homepage: Some("https://example.com".to_string()),
-        endpoint: Some("https://api.example.com".to_string()),
-        api_key: Some("test-api-key".to_string()),
-        icon: None,
-        model: None,
-        notes: None,
-        haiku_model: None,
-        sonnet_model: None,
-        opus_model: None,
-        config: None,
-        config_format: None,
-        config_url: None,
-        apps: None,
-        repo: None,
-        directory: None,
-        branch: None,
-        content: None,
-        description: None,
-        enabled: None,
-        usage_enabled: None,
-        usage_script: None,
-        usage_api_key: None,
-        usage_base_url: None,
-        usage_access_token: None,
-        usage_user_id: None,
-        usage_auto_interval: None,
-    };
-
-    let provider = build_provider_from_request(&AppType::Gemini, &request).unwrap();
-
-    let env = provider.settings_config["env"].as_object().unwrap();
-    assert_eq!(env["GEMINI_API_KEY"], "test-api-key");
-    assert_eq!(env["GOOGLE_GEMINI_BASE_URL"], "https://api.example.com");
-    // Model should not be present
-    assert!(env.get("GEMINI_MODEL").is_none());
+    let auth = provider.settings_config["auth"].as_object().unwrap();
+    assert_eq!(auth["OPENAI_API_KEY"], "test-api-key");
+    let config = provider.settings_config["config"].as_str().unwrap();
+    assert!(config.contains("model = \"gpt-5\""));
+    assert!(config.contains("base_url = \"https://api.example.com/v1\""));
 }
 
 #[test]
@@ -349,12 +302,9 @@ fn test_parse_mcp_apps() {
     let apps = parse_mcp_apps("claude,codex").unwrap();
     assert!(apps.claude);
     assert!(apps.codex);
-    assert!(!apps.gemini);
 
-    let apps = parse_mcp_apps("gemini").unwrap();
-    assert!(!apps.claude);
-    assert!(!apps.codex);
-    assert!(apps.gemini);
+    let err = parse_mcp_apps("gemini").unwrap_err();
+    assert!(err.to_string().contains("Invalid app"));
 
     let err = parse_mcp_apps("invalid").unwrap_err();
     assert!(err.to_string().contains("Invalid app"));

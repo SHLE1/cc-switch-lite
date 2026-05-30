@@ -10,16 +10,11 @@ mod config;
 mod database;
 mod deeplink;
 mod error;
-mod gemini_config;
-mod gemini_mcp;
-pub mod hermes_config;
 mod init_status;
 mod lightweight;
 #[cfg(target_os = "linux")]
 mod linux_fix;
 mod mcp;
-mod openclaw_config;
-mod opencode_config;
 mod panic_hook;
 mod prompt;
 mod prompt_files;
@@ -43,10 +38,9 @@ pub use database::Database;
 pub use deeplink::{import_provider_from_deeplink, parse_deeplink_url, DeepLinkImportRequest};
 pub use error::AppError;
 pub use mcp::{
-    import_from_claude, import_from_codex, import_from_gemini, remove_server_from_claude,
-    remove_server_from_codex, remove_server_from_gemini, sync_enabled_to_claude,
-    sync_enabled_to_codex, sync_enabled_to_gemini, sync_single_server_to_claude,
-    sync_single_server_to_codex, sync_single_server_to_gemini,
+    import_from_claude, import_from_codex, remove_server_from_claude,
+    remove_server_from_codex, sync_enabled_to_claude, sync_enabled_to_codex,
+    sync_single_server_to_claude, sync_single_server_to_codex,
 };
 pub use provider::{Provider, ProviderMeta};
 pub use services::{
@@ -419,9 +413,7 @@ pub fn run() {
             let fresh_install_at_startup =
                 app_state.db.is_providers_empty().unwrap_or(false);
 
-            for app_type in
-                crate::app_config::AppType::all().filter(|t| !t.is_additive_mode())
-            {
+            for app_type in crate::app_config::AppType::all() {
                 if !crate::services::provider::should_import_default_config_on_startup(
                     &app_state,
                     &app_type,
@@ -960,7 +952,6 @@ fn initialize_common_config_snippets(state: &store::AppState) {
         for app_type in [
             crate::app_config::AppType::Claude,
             crate::app_config::AppType::Codex,
-            crate::app_config::AppType::Gemini,
         ] {
             if let Err(e) = crate::services::provider::ProviderService::migrate_legacy_common_config_usage_if_needed(
                 state,

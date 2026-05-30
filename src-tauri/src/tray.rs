@@ -63,7 +63,7 @@ pub struct TrayAppSection {
 pub const AUTO_SUFFIX: &str = "auto";
 pub const TRAY_ID: &str = "cc-switch";
 
-pub const TRAY_SECTIONS: [TrayAppSection; 3] = [
+pub const TRAY_SECTIONS: [TrayAppSection; 2] = [
     TrayAppSection {
         app_type: AppType::Codex,
         prefix: "codex_",
@@ -77,13 +77,6 @@ pub const TRAY_SECTIONS: [TrayAppSection; 3] = [
         empty_id: "claude_empty",
         header_label: "Claude",
         log_name: "Claude",
-    },
-    TrayAppSection {
-        app_type: AppType::Gemini,
-        prefix: "gemini_",
-        empty_id: "gemini_empty",
-        header_label: "Gemini",
-        log_name: "Gemini",
     },
 ];
 

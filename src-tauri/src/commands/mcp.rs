@@ -121,8 +121,7 @@ pub async fn upsert_mcp_server_in_config(
     if sync_other_side.unwrap_or(false) {
         new_server.apps.claude = true;
         new_server.apps.codex = true;
-        new_server.apps.gemini = true;
-        new_server.apps.opencode = true;
+
     }
 
     McpService::upsert_server(&state, new_server)
@@ -194,14 +193,11 @@ pub async fn toggle_mcp_app(
     McpService::toggle_app(&state, &server_id, app_ty, enabled).map_err(|e| e.to_string())
 }
 
-/// 从所有应用导入 MCP 服务器（复用已有的导入逻辑）
+/// 从所有支持的应用导入 MCP 服务器（复用已有的导入逻辑）
 #[tauri::command]
 pub async fn import_mcp_from_apps(state: State<'_, AppState>) -> Result<usize, String> {
     let mut total = 0;
     total += McpService::import_from_claude(&state).unwrap_or(0);
     total += McpService::import_from_codex(&state).unwrap_or(0);
-    total += McpService::import_from_gemini(&state).unwrap_or(0);
-    total += McpService::import_from_opencode(&state).unwrap_or(0);
-    total += McpService::import_from_hermes(&state).unwrap_or(0);
     Ok(total)
 }
