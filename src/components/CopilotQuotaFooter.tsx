@@ -7,7 +7,8 @@ import { resolveManagedAccountId } from "@/lib/authBinding";
 import { PROVIDER_TYPES } from "@/config/constants";
 import {
   TierBadge,
-  utilizationColor,
+  remainingColor,
+  remainingPercent,
 } from "@/components/SubscriptionQuotaFooter";
 
 interface CopilotQuotaFooterProps {
@@ -151,6 +152,7 @@ const CopilotQuotaFooter: React.FC<CopilotQuotaFooterProps> = ({
           const label = t("subscription.copilotPremium", {
             defaultValue: "Premium",
           });
+          const remaining = remainingPercent(tier);
           return (
             <div key={tier.name} className="flex items-center gap-3 text-xs">
               <span
@@ -162,21 +164,17 @@ const CopilotQuotaFooter: React.FC<CopilotQuotaFooterProps> = ({
               <div className="flex-1 h-2 bg-gray-100 dark:bg-gray-800 rounded-full overflow-hidden">
                 <div
                   className={`h-full rounded-full transition-all ${
-                    tier.utilization >= 90
+                    remaining <= 10
                       ? "bg-red-500"
-                      : tier.utilization >= 70
+                      : remaining <= 30
                         ? "bg-orange-500"
                         : "bg-green-500"
                   }`}
-                  style={{
-                    width: `${Math.min(tier.utilization, 100)}%`,
-                  }}
+                  style={{ width: `${remaining}%` }}
                 />
               </div>
-              <span
-                className={`font-semibold tabular-nums ${utilizationColor(tier.utilization)}`}
-              >
-                {Math.round(tier.utilization)}%
+              <span className={`font-semibold tabular-nums ${remainingColor(remaining)}`}>
+                {Math.round(remaining)}%
               </span>
             </div>
           );

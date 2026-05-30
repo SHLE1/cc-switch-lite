@@ -7,6 +7,7 @@ import type { QuotaTier, SubscriptionQuota } from "@/types/subscription";
 
 interface SubscriptionQuotaFooterProps {
   appId: AppId;
+  providerId?: string;
   inline?: boolean;
   isCurrent?: boolean;
 }
@@ -35,12 +36,19 @@ export const TIER_I18N_KEYS: Record<string, string> = {
   // GitHub Copilot
   premium: "subscription.copilotPremium",
 };
-
-/** 根据使用百分比返回颜色 class */
-export function utilizationColor(utilization: number): string {
-  if (utilization >= 90) return "text-red-500 dark:text-red-400";
-  if (utilization >= 70) return "text-orange-500 dark:text-orange-400";
+/** 根据剩余百分比返回颜色 class */
+export function remainingColor(remaining: number): string {
+  if (remaining <= 10) return "text-red-500 dark:text-red-400";
+  if (remaining <= 30) return "text-orange-500 dark:text-orange-400";
   return "text-green-600 dark:text-green-400";
+}
+
+export function utilizationColor(utilization: number): string {
+  return remainingColor(Math.max(0, 100 - utilization));
+}
+
+export function remainingPercent(tier: QuotaTier): number {
+  return Math.max(0, Math.min(100, 100 - tier.utilization));
 }
 
 /** 计算倒计时的纯时间字符串，如 "2h30m"、"3d12h" */
@@ -234,8 +242,7 @@ export const SubscriptionQuotaView: React.FC<SubscriptionQuotaViewProps> = ({
             <RefreshCw size={12} className={loading ? "animate-spin" : ""} />
           </button>
         </div>
-
-        {/* 第二行：各 tier 使用百分比 */}
+        {/* 第二行：各 tier 剩余百分比 */}
         <div className="flex items-center gap-2">
           {tiers
             .filter((tier) => !HIDDEN_INLINE_TIERS.has(tier.name))
@@ -308,14 +315,13 @@ export const TierBadge: React.FC<{
     ? t(TIER_I18N_KEYS[tier.name])
     : tier.name;
   const countdown = countdownStr(tier.resetsAt);
+  const remaining = remainingPercent(tier);
 
   return (
     <div className="flex items-center gap-0.5">
       <span className="text-gray-500 dark:text-gray-400">{label}:</span>
-      <span
-        className={`font-semibold tabular-nums ${utilizationColor(tier.utilization)}`}
-      >
-        {t("subscription.utilization", { value: Math.round(tier.utilization) })}
+      <span className={`font-semibold tabular-nums ${remainingColor(remaining)}`}>
+        {t("subscription.utilization", { value: Math.round(remaining) })}
       </span>
       {countdown && (
         <span className="text-muted-foreground/60 ml-0.5 flex items-center gap-px">
@@ -336,7 +342,7 @@ const TierBar: React.FC<{
     ? t(TIER_I18N_KEYS[tier.name])
     : tier.name;
   const resetText = formatResetTime(tier.resetsAt, t);
-
+  const remaining = remainingPercent(tier);
   return (
     <div className="flex items-center gap-3 text-xs">
       <span
@@ -346,17 +352,17 @@ const TierBar: React.FC<{
         {label}
       </span>
 
-      {/* 进度条 */}
+      {/* 剩余额度条 */}
       <div className="flex-1 h-2 bg-gray-100 dark:bg-gray-800 rounded-full overflow-hidden">
         <div
           className={`h-full rounded-full transition-all ${
-            tier.utilization >= 90
+            remaining <= 10
               ? "bg-red-500"
-              : tier.utilization >= 70
+              : remaining <= 30
                 ? "bg-orange-500"
                 : "bg-green-500"
           }`}
-          style={{ width: `${Math.min(tier.utilization, 100)}%` }}
+          style={{ width: `${remaining}%` }}
         />
       </div>
 
@@ -364,10 +370,8 @@ const TierBar: React.FC<{
         className="flex items-center gap-2 flex-shrink-0"
         style={{ width: "30%" }}
       >
-        <span
-          className={`font-semibold tabular-nums ${utilizationColor(tier.utilization)}`}
-        >
-          {Math.round(tier.utilization)}%
+        <span className={`font-semibold tabular-nums ${remainingColor(remaining)}`}>
+          {Math.round(remaining)}%
         </span>
         {resetText && (
           <span
@@ -388,6 +392,7 @@ const TierBar: React.FC<{
  */
 const SubscriptionQuotaFooter: React.FC<SubscriptionQuotaFooterProps> = ({
   appId,
+  providerId,
   inline = false,
   isCurrent = false,
 }) => {
@@ -395,7 +400,7 @@ const SubscriptionQuotaFooter: React.FC<SubscriptionQuotaFooterProps> = ({
     data: quota,
     isFetching: loading,
     refetch,
-  } = useSubscriptionQuota(appId, isCurrent, isCurrent);
+  } = useSubscriptionQuota(appId, isCurrent, isCurrent, providerId ?? "live");
 
   if (!isCurrent) return null;
 

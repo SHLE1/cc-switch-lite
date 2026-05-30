@@ -14,7 +14,6 @@ import type {
   ProviderMeta,
   ProviderTestConfig,
   ClaudeApiFormat,
-  CodexApiFormat,
   ClaudeApiKeyField,
 } from "@/types";
 import {
@@ -52,7 +51,6 @@ import {
   hasApiKeyField,
 } from "@/utils/providerConfigUtils";
 import { mergeProviderMeta } from "@/utils/providerMetaUtils";
-import { extractCodexWireApi } from "@/utils/providerConfigUtils";
 import { isNonNegativeDecimalString } from "@/types/usage";
 import { getCodexCustomTemplate } from "@/config/codexTemplates";
 import CodexConfigEditor from "./CodexConfigEditor";
@@ -127,24 +125,6 @@ type PresetEntry = {
     | HermesProviderPreset;
 };
 
-const codexApiFormatFromWireApi = (
-  wireApi: string | undefined,
-): CodexApiFormat | undefined => {
-  switch (wireApi?.trim().toLowerCase()) {
-    case "chat":
-    case "chat_completions":
-    case "chat-completions":
-    case "openai_chat":
-    case "openai-chat":
-      return "openai_chat";
-    case "responses":
-    case "openai_responses":
-    case "openai-responses":
-      return "openai_responses";
-    default:
-      return undefined;
-  }
-};
 
 export interface ProviderFormProps {
   appId: AppId;
@@ -451,43 +431,15 @@ function ProviderFormFull({
     handleCodexConfigChange: originalHandleCodexConfigChange,
     resetCodexConfig,
   } = useCodexConfigState({ initialData });
-
-  const [localCodexApiFormat, setLocalCodexApiFormat] =
-    useState<CodexApiFormat>(() => {
-      if (initialData?.meta?.apiFormat === "openai_chat") {
-        return "openai_chat";
-      }
-      if (initialData?.meta?.apiFormat === "openai_responses") {
-        return "openai_responses";
-      }
-      return (
-        codexApiFormatFromWireApi(
-          extractCodexWireApi(
-            typeof initialData?.settingsConfig?.config === "string"
-              ? initialData.settingsConfig.config
-              : "",
-          ),
-        ) ?? "openai_responses"
-      );
-    });
-
   const { debouncedValidate } = useCodexTomlValidation();
 
   const handleCodexConfigChange = useCallback(
     (value: string) => {
       originalHandleCodexConfigChange(value);
-      const nextFormat = codexApiFormatFromWireApi(extractCodexWireApi(value));
-      if (nextFormat) {
-        setLocalCodexApiFormat(nextFormat);
-      }
       debouncedValidate(value);
     },
     [originalHandleCodexConfigChange, debouncedValidate],
   );
-
-  const handleCodexApiFormatChange = useCallback((format: CodexApiFormat) => {
-    setLocalCodexApiFormat(format);
-  }, []);
 
   useEffect(() => {
     if (appId === "codex" && !initialData && selectedPresetId === "custom") {
@@ -1275,12 +1227,7 @@ function ProviderFormFull({
         pricingConfig.enabled && pricingConfig.pricingModelSource !== "inherit"
           ? pricingConfig.pricingModelSource
           : undefined,
-      apiFormat:
-        appId === "claude" && category !== "official"
-          ? localApiFormat
-          : appId === "codex" && category !== "official"
-            ? localCodexApiFormat
-            : undefined,
+      apiFormat: appId === "claude" && category !== "official" ? localApiFormat : undefined,
       apiKeyField:
         appId === "claude" &&
         category !== "official" &&
@@ -1404,10 +1351,6 @@ function ProviderFormFull({
       if (appId === "codex") {
         const template = getCodexCustomTemplate();
         resetCodexConfig(template.auth, template.config);
-        setLocalCodexApiFormat(
-          codexApiFormatFromWireApi(extractCodexWireApi(template.config)) ??
-            "openai_responses",
-        );
       }
       if (appId === "gemini") {
         resetGeminiConfig({}, {});
@@ -1444,11 +1387,6 @@ function ProviderFormFull({
       const config = preset.config ?? "";
 
       resetCodexConfig(auth, config);
-      setLocalCodexApiFormat(
-        preset.apiFormat ??
-          codexApiFormatFromWireApi(extractCodexWireApi(config)) ??
-          "openai_responses",
-      );
 
       form.reset({
         name: preset.nameKey ? t(preset.nameKey) : preset.name,
@@ -1913,8 +1851,6 @@ function ProviderFormFull({
               }
               autoSelect={endpointAutoSelect}
               onAutoSelectChange={setEndpointAutoSelect}
-              apiFormat={localCodexApiFormat}
-              onApiFormatChange={handleCodexApiFormatChange}
               shouldShowModelField={false}
               speedTestEndpoints={speedTestEndpoints}
             />

@@ -6,6 +6,8 @@
   "scripts": {
     "dev": "pnpm tauri dev",
     "build": "pnpm tauri build",
+    "build:dmg": "node scripts/build-dmg-to-release.js",
+    "copy:dmg": "node scripts/build-dmg-to-release.js --skip-build",
     "tauri": "tauri",
     "dev:renderer": "vite",
     "build:renderer": "vite build",
