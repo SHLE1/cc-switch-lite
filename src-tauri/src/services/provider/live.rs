@@ -27,13 +27,6 @@ pub(crate) fn sanitize_claude_settings_for_live(settings: &Value) -> Value {
     v
 }
 
-pub(crate) fn provider_exists_in_live_config(
-    _app_type: &AppType,
-    _provider_id: &str,
-) -> Result<bool, AppError> {
-    Ok(false)
-}
-
 fn json_is_subset(target: &Value, source: &Value) -> bool {
     match source {
         Value::Object(source_map) => {

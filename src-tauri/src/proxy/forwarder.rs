@@ -2263,6 +2263,11 @@ mod tests {
     #[test]
     fn exact_header_case_skipped_for_codex_oauth() {
         let codex_oauth = test_provider_with_type(Some("codex_oauth"));
+        assert!(!should_preserve_exact_header_case(
+            "Claude",
+            &codex_oauth,
+            Some("anthropic")
+        ));
     }
 
     #[test]
@@ -2270,7 +2275,6 @@ mod tests {
         let (endpoint, passthrough_query) = rewrite_claude_transform_endpoint(
             "/v1/messages?beta=true&foo=bar",
             "openai_chat",
-            false,
             &json!({ "model": "gpt-5.4" }),
         );
 
@@ -2283,7 +2287,6 @@ mod tests {
         let (endpoint, passthrough_query) = rewrite_claude_transform_endpoint(
             "/claude/v1/messages?beta=true&x-id=1",
             "openai_responses",
-            false,
             &json!({ "model": "gpt-5.4" }),
         );
 

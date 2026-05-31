@@ -1443,8 +1443,6 @@ impl ProxyService {
         auth.get("OPENAI_API_KEY").and_then(|v| v.as_str()) == Some(PROXY_TOKEN_PLACEHOLDER)
     }
     /// 从供应商配置更新 Live 备份（用于代理模式下的热切换）
-
-    /// 从供应商配置更新 Live 备份（用于代理模式下的热切换）
     ///
     /// 与 backup_live_configs() 不同，此方法从供应商的 settings_config 生成备份，
     /// 而不是从 Live 文件读取（因为 Live 文件已被代理接管）。
