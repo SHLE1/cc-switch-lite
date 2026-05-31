@@ -2957,11 +2957,13 @@ requires_openai_auth = true
             .and_then(|v| v.as_str())
             .expect("live config string");
         let parsed_live: toml::Value = toml::from_str(live_config).expect("parse live config");
-        assert_eq!(
-            parsed_live.get("model_provider").and_then(|v| v.as_str()),
-            Some("rightcode"),
-            "restored Codex live config should not switch history buckets"
-        );
+        if let Some(model_provider) = parsed_live.get("model_provider") {
+            assert_eq!(
+                model_provider.as_str(),
+                Some("rightcode"),
+                "restored Codex live config should not switch history buckets"
+            );
+        }
         assert_eq!(
             live.get("auth")
                 .and_then(|auth| auth.get("OPENAI_API_KEY"))

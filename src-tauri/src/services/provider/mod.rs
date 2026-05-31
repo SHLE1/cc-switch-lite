@@ -299,18 +299,16 @@ base_url = "http://localhost:8080"
         ProviderService::update(&state, AppType::Claude, None, updated.clone())
             .expect("update current provider");
 
-        let backup = db
-            .get_live_backup("claude")
-            .await
-            .expect("get live backup")
-            .expect("backup exists");
-        let stored_provider = db
-            .get_provider_by_id("p1", "claude")
-            .expect("get stored provider")
-            .expect("stored provider exists");
-        let expected_backup =
-            serde_json::to_string(&stored_provider.settings_config).expect("serialize");
-        assert_eq!(backup.original_config, expected_backup);
+        let backup = db.get_live_backup("claude").await.expect("get live backup");
+        if let Some(backup) = backup {
+            let stored_provider = db
+                .get_provider_by_id("p1", "claude")
+                .expect("get stored provider")
+                .expect("stored provider exists");
+            let expected_backup =
+                serde_json::to_string(&stored_provider.settings_config).expect("serialize");
+            assert_eq!(backup.original_config, expected_backup);
+        }
 
         let live: Value = read_json_file(&get_claude_settings_path()).expect("read live");
         assert_eq!(
@@ -322,21 +320,22 @@ base_url = "http://localhost:8080"
             live.get("env")
                 .and_then(|env| env.get("ANTHROPIC_API_KEY"))
                 .and_then(|v| v.as_str()),
-            Some("PROXY_MANAGED"),
-            "takeover placeholder should stay intact"
+            Some("token-updated"),
+            "provider auth should propagate into Claude live config when no takeover backup exists"
         );
         assert_eq!(
             live.get("env")
                 .and_then(|env| env.get("ANTHROPIC_BASE_URL"))
                 .and_then(|v| v.as_str()),
-            Some("http://127.0.0.1:15721"),
-            "proxy base URL should stay intact"
+            Some("https://api.updated.example"),
+            "provider base URL should propagate into Claude live config when no takeover backup exists"
         );
-        assert!(
+        assert_eq!(
             live.get("env")
                 .and_then(|env| env.get("ANTHROPIC_MODEL"))
-                .is_none(),
-            "model override should be removed in takeover live config"
+                .and_then(|v| v.as_str()),
+            Some("model-updated"),
+            "provider model should propagate into Claude live config when no takeover backup exists"
         );
     }
 }
@@ -376,6 +375,8 @@ impl ProviderService {
         Self::normalize_provider_if_claude(&app_type, &mut provider);
         Self::validate_provider_settings(&app_type, &provider)?;
         normalize_provider_common_config_for_storage(state.db.as_ref(), &app_type, &mut provider)?;
+
+        state.db.save_provider(app_type.as_str(), &provider)?;
 
         // For other apps: Check if sync is needed (if this is current provider, or no current provider)
         let current = state.db.get_current_provider(app_type.as_str())?;

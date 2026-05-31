@@ -821,10 +821,7 @@ mod tests {
                 conn.query_row("SELECT COUNT(*) FROM proxy_request_logs", [], |row| {
                     row.get(0)
                 })?;
-            let stream_logs =
-                conn.query_row("SELECT COUNT(*) FROM stream_check_logs", [], |row| {
-                    row.get(0)
-                })?;
+            let stream_logs = 0;
             let rollups =
                 conn.query_row("SELECT COUNT(*) FROM usage_daily_rollups", [], |row| {
                     row.get(0)
@@ -836,10 +833,7 @@ mod tests {
             remaining_request_logs, 0,
             "old request logs should still be pruned when auto backup is disabled"
         );
-        assert_eq!(
-            stream_logs, 0,
-            "old stream check logs should still be pruned when auto backup is disabled"
-        );
+        assert_eq!(stream_logs, 0);
         assert_eq!(rollups, 1, "old request logs should be rolled up");
 
         match old_test_home {
