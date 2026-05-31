@@ -142,30 +142,28 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          KEY_PAYLOAD=""
           if [ -z "${TAURI_SIGNING_PRIVATE_KEY_SECRET:-}" ]; then
             echo "TAURI_PRIVATE_KEY_CONFIGURED=false" >> "$GITHUB_ENV"
             echo "No TAURI_SIGNING_PRIVATE_KEY secret configured; updater artifacts will be skipped."
             exit 0
           fi
 
+          KEY_PATH="$RUNNER_TEMP/tauri_signing.key"
           if printf '%s' "$TAURI_SIGNING_PRIVATE_KEY_SECRET" | awk 'NR == 1 { exit ($0 ~ /^untrusted comment:/ ? 0 : 1) }'; then
-            KEY_PAYLOAD=$(printf '%s\n' "$TAURI_SIGNING_PRIVATE_KEY_SECRET" | awk 'NR == 2 { print; exit }')
+            printf '%s\n' "$TAURI_SIGNING_PRIVATE_KEY_SECRET" > "$KEY_PATH"
           elif DECODED=$(printf '%s' "$TAURI_SIGNING_PRIVATE_KEY_SECRET" | base64 --decode 2>/dev/null || printf '%s' "$TAURI_SIGNING_PRIVATE_KEY_SECRET" | base64 -D 2>/dev/null) \
             && printf '%s' "$DECODED" | awk 'NR == 1 { exit ($0 ~ /^untrusted comment:/ ? 0 : 1) }'; then
-            KEY_PAYLOAD=$(printf '%s\n' "$DECODED" | awk 'NR == 2 { print; exit }')
+            printf '%s\n' "$DECODED" > "$KEY_PATH"
           else
-            KEY_PAYLOAD=$(printf '%s' "$TAURI_SIGNING_PRIVATE_KEY_SECRET" | tr -d '\r\n')
+            ONE=$(printf '%s' "$TAURI_SIGNING_PRIVATE_KEY_SECRET" | tr -d '\r\n')
+            printf '%s\n%s\n' 'untrusted comment: tauri signing key' "$ONE" > "$KEY_PATH"
           fi
-          if [ -z "$KEY_PAYLOAD" ]; then
-            echo "TAURI_SIGNING_PRIVATE_KEY secret did not contain a private key payload." >&2
-            exit 1
-          fi
-          echo "TAURI_SIGNING_PRIVATE_KEY=$KEY_PAYLOAD" >> "$GITHUB_ENV"
+          KEY_B64=$(base64 < "$KEY_PATH" | tr -d '\r\n')
+          echo "TAURI_SIGNING_PRIVATE_KEY=$KEY_B64" >> "$GITHUB_ENV"
+          echo "TAURI_PRIVATE_KEY_CONFIGURED=true" >> "$GITHUB_ENV"
           if [ -n "${TAURI_SIGNING_PRIVATE_KEY_PASSWORD_SECRET:-}" ]; then
             echo "TAURI_SIGNING_PRIVATE_KEY_PASSWORD=$TAURI_SIGNING_PRIVATE_KEY_PASSWORD_SECRET" >> "$GITHUB_ENV"
           fi
-          echo "TAURI_PRIVATE_KEY_CONFIGURED=true" >> "$GITHUB_ENV"
         env:
           TAURI_SIGNING_PRIVATE_KEY_SECRET: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD_SECRET: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
