@@ -112,13 +112,6 @@ export const iconMetadata: Record<string, IconMetadata> = {
     keywords: ["cohere"],
     defaultColor: "#39594D",
   },
-  copilot: {
-    name: "copilot",
-    displayName: "copilot",
-    category: "other",
-    keywords: [],
-    defaultColor: "currentColor",
-  },
   ctok: {
     name: "ctok",
     displayName: "CTok",
@@ -167,13 +160,6 @@ export const iconMetadata: Record<string, IconMetadata> = {
     category: "tool",
     keywords: ["git", "version control"],
     defaultColor: "#181717",
-  },
-  githubcopilot: {
-    name: "githubcopilot",
-    displayName: "githubcopilot",
-    category: "other",
-    keywords: [],
-    defaultColor: "currentColor",
   },
   google: {
     name: "google",

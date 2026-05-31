@@ -8,7 +8,7 @@ const ICONS_DIR = path.join(__dirname, '../src/icons/extracted');
 const KEEP_LIST = [
     // AI Providers
     'openai', 'anthropic', 'claude', 'google', 'gemini', 'gemma', 'palm',
-    'microsoft', 'azure', 'copilot', 'meta', 'llama',
+    'microsoft', 'azure', 'meta', 'llama',
     'alibaba', 'qwen', 'tencent', 'hunyuan', 'baidu', 'wenxin',
     'bytedance', 'doubao', 'deepseek', 'moonshot', 'kimi', 'stepfun',
     'zhipu', 'chatglm', 'glm', 'minimax', 'mistral', 'cohere',
@@ -18,7 +18,7 @@ const KEEP_LIST = [
 
     // Cloud/Tools
     'aws', 'googlecloud', 'huawei', 'cloudflare',
-    'github', 'githubcopilot', 'vercel', 'notion', 'discord',
+    'github', 'vercel', 'notion', 'discord',
     'gitlab', 'docker', 'kubernetes', 'vscode', 'settings', 'folder', 'file', 'link'
 ];
 

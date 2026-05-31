@@ -120,7 +120,7 @@ export const iconMetadata: Record<string, IconMetadata> = {
   alibaba: { name: 'alibaba', displayName: 'Alibaba', category: 'ai-provider', keywords: ['qwen', 'tongyi'], defaultColor: '#FF6A00' },
   tencent: { name: 'tencent', displayName: 'Tencent', category: 'ai-provider', keywords: ['hunyuan'], defaultColor: '#00A4FF' },
   meta: { name: 'meta', displayName: 'Meta', category: 'ai-provider', keywords: ['facebook', 'llama'], defaultColor: '#0081FB' },
-  microsoft: { name: 'microsoft', displayName: 'Microsoft', category: 'ai-provider', keywords: ['copilot', 'azure'], defaultColor: '#00A4EF' },
+  microsoft: { name: 'microsoft', displayName: 'Microsoft', category: 'ai-provider', keywords: ['azure'], defaultColor: '#00A4EF' },
   cohere: { name: 'cohere', displayName: 'Cohere', category: 'ai-provider', keywords: ['cohere'], defaultColor: '#39594D' },
   perplexity: { name: 'perplexity', displayName: 'Perplexity', category: 'ai-provider', keywords: ['perplexity'], defaultColor: '#20808D' },
   mistral: { name: 'mistral', displayName: 'Mistral', category: 'ai-provider', keywords: ['mistral'], defaultColor: '#FF7000' },

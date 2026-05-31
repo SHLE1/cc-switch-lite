@@ -70,15 +70,8 @@ impl Provider {
         self.provider_type() == Some("codex_oauth")
     }
 
-    pub fn is_github_copilot(&self) -> bool {
-        self.provider_type() == Some("github_copilot")
-            || self.claude_base_url_contains("githubcopilot.com")
-    }
-
     pub fn uses_managed_account_auth(&self) -> bool {
-        self.is_github_copilot()
-            || self.is_codex_oauth()
-            || self.claude_base_url_contains("chatgpt.com/backend-api/codex")
+        self.is_codex_oauth() || self.claude_base_url_contains("chatgpt.com/backend-api/codex")
     }
 
     fn provider_type(&self) -> Option<&str> {
@@ -221,7 +214,7 @@ pub enum AuthBindingSource {
     /// 从 provider 自身配置读取认证信息（默认）
     #[default]
     ProviderConfig,
-    /// 使用托管账号认证（如 GitHub Copilot OAuth）
+    /// 使用托管账号认证
     ManagedAccount,
 }
 
@@ -231,7 +224,7 @@ pub struct AuthBinding {
     /// 认证来源
     #[serde(default)]
     pub source: AuthBindingSource,
-    /// 托管认证供应商标识（如 github_copilot）
+    /// 托管认证供应商标识
     #[serde(rename = "authProvider", skip_serializing_if = "Option::is_none")]
     pub auth_provider: Option<String>,
     /// 托管账号 ID；为空表示跟随该认证供应商的默认账号
@@ -251,7 +244,7 @@ pub enum ClaudeDesktopMode {
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
 pub struct ClaudeDesktopModelRoute {
-    /// 真实上游模型名，只保存在 CC Switch 内部，不写入 Claude Desktop profile。
+    /// 真实上游模型名，只保存在 CC Switch Lite 内部，不写入 Claude Desktop profile。
     pub model: String,
     /// Claude Desktop 模型菜单显示名；写入 profile 的 `labelOverride`。
     #[serde(rename = "labelOverride", skip_serializing_if = "Option::is_none")]
@@ -321,7 +314,7 @@ pub struct ProviderMeta {
     pub api_format: Option<String>,
     /// 通用认证绑定（provider_config / managed_account）
     ///
-    /// 新代码应只写入该字段；githubAccountId 仅保留兼容读取。
+    /// 新代码应只写入该字段。
     #[serde(rename = "authBinding", skip_serializing_if = "Option::is_none")]
     pub auth_binding: Option<AuthBinding>,
     /// Claude 认证字段名（"ANTHROPIC_AUTH_TOKEN" 或 "ANTHROPIC_API_KEY"）
@@ -344,16 +337,11 @@ pub struct ProviderMeta {
     #[serde(rename = "liveConfigManaged", skip_serializing_if = "Option::is_none")]
     pub live_config_managed: Option<bool>,
     /// 供应商类型标识（用于特殊供应商检测）
-    /// - "github_copilot": GitHub Copilot 供应商
     #[serde(rename = "providerType", skip_serializing_if = "Option::is_none")]
     pub provider_type: Option<String>,
     /// API key 余额查询模板。"unsupported" 表示该供应商不显示、不请求余额。
     #[serde(rename = "balanceTemplate", skip_serializing_if = "Option::is_none")]
     pub balance_template: Option<String>,
-    /// GitHub Copilot 关联账号 ID（仅 github_copilot 供应商使用）
-    /// 用于多账号支持，关联到特定的 GitHub 账号
-    #[serde(rename = "githubAccountId", skip_serializing_if = "Option::is_none")]
-    pub github_account_id: Option<String>,
 }
 
 impl ProviderMeta {
@@ -365,7 +353,6 @@ impl ProviderMeta {
 
     /// 解析指定托管认证供应商绑定的账号 ID。
     ///
-    /// 新版优先读取 authBinding，旧版继续兼容 githubAccountId。
     pub fn managed_account_id_for(&self, auth_provider: &str) -> Option<String> {
         if let Some(binding) = self.auth_binding.as_ref() {
             if binding.source == AuthBindingSource::ManagedAccount
@@ -374,11 +361,6 @@ impl ProviderMeta {
                 return binding.account_id.clone();
             }
         }
-
-        if auth_provider == "github_copilot" {
-            return self.github_account_id.clone();
-        }
-
         None
     }
 }
@@ -688,53 +670,6 @@ mod tests {
         assert!(provider.icon.is_none());
         assert!(provider.icon_color.is_none());
         assert!(!provider.in_failover_queue);
-    }
-
-    #[test]
-    fn provider_managed_account_auth_detection_uses_type_or_known_endpoint() {
-        let mut copilot = Provider::with_id(
-            "copilot".to_string(),
-            "Copilot".to_string(),
-            json!({
-                "env": {
-                    "ANTHROPIC_BASE_URL": "https://api.githubcopilot.com"
-                }
-            }),
-            None,
-        );
-        assert!(copilot.is_github_copilot());
-        assert!(copilot.uses_managed_account_auth());
-
-        let mut codex = Provider::with_id(
-            "codex".to_string(),
-            "Codex".to_string(),
-            json!({ "env": {} }),
-            None,
-        );
-        codex.meta = Some(ProviderMeta {
-            provider_type: Some("codex_oauth".to_string()),
-            ..Default::default()
-        });
-        assert!(codex.is_codex_oauth());
-        assert!(codex.uses_managed_account_auth());
-
-        let codex_endpoint = Provider::with_id(
-            "codex-endpoint".to_string(),
-            "Codex Endpoint".to_string(),
-            json!({
-                "env": {
-                    "ANTHROPIC_BASE_URL": "https://chatgpt.com/backend-api/codex"
-                }
-            }),
-            None,
-        );
-        assert!(codex_endpoint.uses_managed_account_auth());
-
-        copilot.meta = Some(ProviderMeta {
-            provider_type: Some("github_copilot".to_string()),
-            ..Default::default()
-        });
-        assert!(copilot.is_github_copilot());
     }
 
     #[test]

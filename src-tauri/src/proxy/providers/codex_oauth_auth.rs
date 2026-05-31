@@ -25,9 +25,27 @@ use std::path::PathBuf;
 use std::sync::Arc;
 use tokio::sync::{Mutex, RwLock};
 
-use super::copilot_auth::{GitHubAccount, GitHubDeviceCodeResponse};
 
 /// OpenAI OAuth 客户端 ID（OpenCode 使用，与官方 Codex CLI 相同）
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct GitHubDeviceCodeResponse {
+    pub device_code: String,
+    pub user_code: String,
+    pub verification_uri: String,
+    pub expires_in: u64,
+    pub interval: u64,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct GitHubAccount {
+    pub id: String,
+    pub login: String,
+    pub avatar_url: Option<String>,
+    pub authenticated_at: i64,
+    pub github_domain: String,
+}
+
 const CODEX_CLIENT_ID: &str = "app_EMoamEEZ73f0CkXaXp7hrann";
 
 /// Device Code 启动 URL
@@ -675,7 +693,7 @@ impl CodexOAuthManager {
         !accounts.is_empty()
     }
 
-    /// 获取认证状态摘要（与 Copilot 的格式保持一致，便于复用前端）
+    /// 获取认证状态摘要
     pub async fn get_status(&self) -> CodexOAuthStatus {
         let accounts_map = self.accounts.read().await.clone();
         let default_id = self.resolve_default_account_id().await;

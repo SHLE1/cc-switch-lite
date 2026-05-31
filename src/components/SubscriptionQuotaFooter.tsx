@@ -28,8 +28,6 @@ export const TIER_I18N_KEYS: Record<string, string> = {
   seven_day_opus: "subscription.sevenDayOpus",
   seven_day_sonnet: "subscription.sevenDaySonnet",
   weekly_limit: "subscription.sevenDay",
-  // GitHub Copilot
-  premium: "subscription.copilotPremium",
 };
 /** 根据剩余百分比返回颜色 class */
 export function remainingColor(remaining: number): string {

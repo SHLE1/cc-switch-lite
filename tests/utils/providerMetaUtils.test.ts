@@ -51,22 +51,6 @@ describe("mergeProviderMeta", () => {
     });
   });
 
-  it("removes custom endpoints when result is empty but keeps other meta", () => {
-    const initial: ProviderMeta = {
-      providerType: "github_copilot",
-      githubAccountId: "account-1",
-      custom_endpoints: {
-        "https://example.com": buildEndpoint("https://example.com"),
-      },
-    };
-
-    const result = mergeProviderMeta(initial, null);
-
-    expect(result).toEqual({
-      providerType: "github_copilot",
-      githubAccountId: "account-1",
-    });
-  });
 
   it("returns undefined when removing last field", () => {
     const initial: ProviderMeta = {

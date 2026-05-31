@@ -493,7 +493,7 @@ fn rewrite_codex_profile_model_provider_refs(
     }
 }
 
-/// Keep Codex's active `model_provider` stable across CC Switch provider changes.
+/// Keep Codex's active `model_provider` stable across CC Switch Lite provider changes.
 ///
 /// Codex stores and filters resume history by `model_provider`, so switching between
 /// provider-specific ids like `rightcode` and `aihubmix` makes history appear to move.

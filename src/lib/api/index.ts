@@ -5,13 +5,7 @@ export { subscriptionApi } from "./subscription";
 export * as authApi from "./auth";
 export { balanceApi } from "./balance";
 export type { UsageData, UsageResult } from "./balance";
-export * as copilotApi from "./copilot";
 export type { ProviderSwitchEvent } from "./providers";
-export type {
-  CopilotDeviceCodeResponse,
-  CopilotAuthStatus,
-  GitHubAccount,
-} from "./copilot";
 export type {
   ManagedAuthProvider,
   ManagedAuthAccount,

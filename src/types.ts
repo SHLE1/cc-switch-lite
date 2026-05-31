@@ -65,7 +65,6 @@ export interface ProviderMeta {
   providerType?: string;
   balanceTemplate?: "sub2api" | "newapi" | "unsupported";
   usage_script?: UsageScript;
-  githubAccountId?: string;
 }
 
 export type ClaudeApiFormat = "anthropic" | "openai_chat" | "openai_responses";

@@ -313,7 +313,7 @@ function App() {
               rel="noreferrer"
               className="text-xl font-semibold text-blue-500 hover:text-blue-600 dark:text-blue-400 dark:hover:text-blue-300 transition-colors"
             >
-              CC Switch
+              CC Switch Lite
             </a>
             <span className="text-xs text-muted-foreground">
               {t("app.localOnly", { defaultValue: "Local only" })}

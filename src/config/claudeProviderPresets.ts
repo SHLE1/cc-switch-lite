@@ -34,7 +34,7 @@ export interface ProviderPreset {
   icon?: string;
   iconColor?: string;
   apiFormat?: "anthropic" | "openai_chat" | "openai_responses";
-  providerType?: "github_copilot" | "codex_oauth";
+  providerType?: "codex_oauth";
   requiresOAuth?: boolean;
   hidden?: boolean;
   modelsUrl?: string;

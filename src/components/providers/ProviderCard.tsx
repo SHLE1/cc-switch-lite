@@ -12,7 +12,6 @@ import { ProviderActions } from "@/components/providers/ProviderActions";
 import { ProviderIcon } from "@/components/ProviderIcon";
 import { extractCodexBaseUrl } from "@/utils/providerConfigUtils";
 import SubscriptionQuotaFooter from "@/components/SubscriptionQuotaFooter";
-import CopilotQuotaFooter from "@/components/CopilotQuotaFooter";
 import CodexOauthQuotaFooter from "@/components/CodexOauthQuotaFooter";
 import { PROVIDER_TYPES } from "@/config/constants";
 import { ApiBalanceFooter } from "@/components/ApiBalanceFooter";
@@ -77,7 +76,6 @@ export function ProviderCard({
     return displayUrl !== fallbackUrlText;
   }, [provider.notes, displayUrl, fallbackUrlText]);
   const isOfficial = provider.category === "official";
-  const isCopilot = provider.meta?.providerType === PROVIDER_TYPES.GITHUB_COPILOT;
   const isCodexOauth = provider.meta?.providerType === PROVIDER_TYPES.CODEX_OAUTH;
 
   const handleOpenWebsite = () => {
@@ -153,13 +151,7 @@ export function ProviderCard({
 
         <div className="flex items-center ml-auto min-w-0 gap-3">
           <div className="ml-auto">
-            {isCopilot ? (
-              <CopilotQuotaFooter
-                meta={provider.meta}
-                inline={true}
-                isCurrent={true}
-              />
-            ) : isCodexOauth ? (
+            {isCodexOauth ? (
               <CodexOauthQuotaFooter
                 meta={provider.meta}
                 inline={true}

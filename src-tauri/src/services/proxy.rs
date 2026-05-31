@@ -23,7 +23,7 @@ const PROXY_TOKEN_PLACEHOLDER: &str = "PROXY_MANAGED";
 
 /// 代理接管模式下需要从 Claude Live 配置中移除的"模型覆盖"字段。
 ///
-/// 原因：接管模式下 `*_MODEL` 必须由 CC Switch 写成稳定的 Claude 角色别名，
+/// 原因：接管模式下 `*_MODEL` 必须由 CC Switch Lite 写成稳定的 Claude 角色别名，
 /// 再由本地代理映射到当前供应商真实模型；`*_MODEL_NAME` 也需要同步接管，
 /// 否则 Claude Code 模型菜单会残留上一个供应商的显示名称。
 const CLAUDE_MODEL_OVERRIDE_ENV_KEYS: [&str; 9] = [
@@ -1979,20 +1979,20 @@ mod tests {
     }
 
     #[test]
-    fn managed_account_claude_takeover_uses_api_key_placeholder() {
+    fn codex_oauth_claude_takeover_uses_api_key_placeholder() {
         let mut provider = Provider::with_id(
-            "copilot".to_string(),
-            "GitHub Copilot".to_string(),
+            "codex-oauth".to_string(),
+            "Codex OAuth".to_string(),
             json!({
                 "env": {
-                    "ANTHROPIC_BASE_URL": "https://api.githubcopilot.com",
+                    "ANTHROPIC_BASE_URL": "https://chatgpt.com/backend-api/codex",
                     "ANTHROPIC_MODEL": "claude-haiku-4.5"
                 }
             }),
             None,
         );
         provider.meta = Some(ProviderMeta {
-            provider_type: Some("github_copilot".to_string()),
+            provider_type: Some("codex_oauth".to_string()),
             ..Default::default()
         });
 
