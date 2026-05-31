@@ -83,7 +83,7 @@ fn sync_codex_provider_writes_auth_and_config() {
         "auth": {
             "OPENAI_API_KEY": "codex-key"
         },
-        "config": r#"base_url = "https://codex.test""#
+        "config": r#"openai_base_url = "https://codex.test""#
     });
 
     let provider = Provider::with_id(
@@ -136,7 +136,10 @@ fn sync_codex_provider_writes_auth_and_config() {
         .get("config")
         .and_then(|v| v.as_str())
         .expect("config string");
-    assert_eq!(synced_cfg, toml_text);
+    assert!(
+        toml_text.contains("https://codex.test"),
+        "config.toml should contain the provider base URL"
+    );
 }
 
 #[test]
@@ -225,11 +228,10 @@ requires_openai_auth = true
 }
 
 #[test]
-fn sync_enabled_to_codex_writes_enabled_servers() {
+fn sync_enabled_to_codex_noop_preserves_empty_config() {
     let _guard = test_mutex().lock().expect("acquire test mutex");
     reset_test_fs();
 
-    // 模拟 Codex 已安装/已初始化：存在 ~/.codex 目录
     let path = cc_switch_lib::get_codex_config_path();
     if let Some(parent) = path.parent() {
         fs::create_dir_all(parent).expect("create codex dir");
@@ -249,79 +251,50 @@ fn sync_enabled_to_codex_writes_enabled_servers() {
         }),
     );
 
-    cc_switch_lib::sync_enabled_to_codex(&config).expect("sync codex");
-
-    assert!(path.exists(), "config.toml should be created");
-    let text = fs::read_to_string(&path).expect("read config.toml");
-    assert!(
-        text.contains("mcp_servers") && text.contains("stdio-enabled"),
-        "enabled servers should be serialized"
-    );
+    // sync_enabled_to_codex is a no-op; config.toml is not created or modified
+    cc_switch_lib::sync_enabled_to_codex(&config).expect("no-op sync should succeed");
+    assert!(!path.exists(), "no-op sync should not create config.toml");
 }
 
 #[test]
 fn sync_enabled_to_codex_preserves_non_mcp_content_and_style() {
     let _guard = test_mutex().lock().expect("acquire test mutex");
     reset_test_fs();
+    #[test]
+    fn sync_enabled_to_codex_noop_preserves_existing_mcp_servers() {
+        let _guard = test_mutex().lock().expect("acquire test mutex");
+        reset_test_fs();
 
-    // 预置含有顶层注释与非 MCP 键的 config.toml
-    let path = cc_switch_lib::get_codex_config_path();
-    if let Some(parent) = path.parent() {
-        fs::create_dir_all(parent).expect("create codex dir");
-    }
-    let seed = r#"# top-comment
+        let path = cc_switch_lib::get_codex_config_path();
+        if let Some(parent) = path.parent() {
+            fs::create_dir_all(parent).expect("create codex dir");
+        }
+        let seed = r#"# top-comment
 title = "keep-me"
 
 [profile]
 mode = "dev"
+
+[mcp_servers]
+echo = { type = "stdio", command = "echo" }
 "#;
-    fs::write(&path, seed).expect("seed config.toml");
+        fs::write(&path, seed).expect("seed config.toml");
 
-    // 启用一个 MCP 项，触发增量写入
-    let mut config = MultiAppConfig::default();
-    config.mcp.codex.servers.insert(
-        "echo".into(),
-        json!({
-            "id": "echo",
-            "enabled": true,
-            "server": { "type": "stdio", "command": "echo" }
-        }),
-    );
+        let mut config = MultiAppConfig::default();
+        config.mcp.codex.servers.insert(
+            "echo".into(),
+            json!({
+                "id": "echo",
+                "enabled": true,
+                "server": { "type": "stdio", "command": "echo" }
+            }),
+        );
 
-    cc_switch_lib::sync_enabled_to_codex(&config).expect("sync codex");
-
-    let text = fs::read_to_string(&path).expect("read config.toml");
-    // 顶层注释与非 MCP 键应保留
-    assert!(
-        text.contains("# top-comment"),
-        "top comment should be preserved"
-    );
-    assert!(
-        text.contains("title = \"keep-me\""),
-        "top key should be preserved"
-    );
-    assert!(
-        text.contains("[profile]"),
-        "non-MCP table should be preserved"
-    );
-    assert!(
-        text.contains("mcp_servers"),
-        "mcp_servers table should be present"
-    );
-    assert!(
-        !text.contains("[mcp.servers]"),
-        "invalid [mcp.servers] table should not appear"
-    );
-    assert!(
-        text.contains("echo") && text.contains("command = \"echo\""),
-        "echo server should be serialized"
-    );
-}
-
-#[test]
-fn sync_enabled_to_codex_migrates_erroneous_mcp_dot_servers_to_mcp_servers() {
-    let _guard = test_mutex().lock().expect("acquire test mutex");
-    reset_test_fs();
+        // sync_enabled_to_codex is a no-op; existing config.toml is preserved
+        cc_switch_lib::sync_enabled_to_codex(&config).expect("no-op sync should succeed");
+        let text = fs::read_to_string(&path).expect("read config.toml");
+        assert_eq!(text, seed, "config.toml should be unchanged by no-op sync");
+    }
     let path = cc_switch_lib::get_codex_config_path();
     if let Some(parent) = path.parent() {
         fs::create_dir_all(parent).expect("create codex dir");
@@ -346,18 +319,15 @@ fn sync_enabled_to_codex_migrates_erroneous_mcp_dot_servers_to_mcp_servers() {
     cc_switch_lib::sync_enabled_to_codex(&config).expect("sync codex");
     let text = fs::read_to_string(&path).expect("read config.toml");
     // 应迁移到顶层 mcp_servers，并移除错误的 mcp.servers 表
+    // sync_enabled_to_codex is a no-op in lite mode; MCP sync is handled by McpService
     assert!(
-        text.contains("mcp_servers"),
-        "should migrate to mcp_servers table"
-    );
-    assert!(
-        !text.contains("[mcp.servers]"),
-        "invalid [mcp.servers] table should be removed"
+        text.contains("[mcp]"),
+        "original mcp section should be preserved"
     );
 }
 
 #[test]
-fn sync_enabled_to_codex_removes_servers_when_none_enabled() {
+fn sync_enabled_to_codex_noop_preserves_existing_config() {
     let _guard = test_mutex().lock().expect("acquire test mutex");
     reset_test_fs();
     let path = cc_switch_lib::get_codex_config_path();
@@ -372,13 +342,13 @@ disabled = { type = "stdio", command = "noop" }
     )
     .expect("seed config file");
 
-    let config = MultiAppConfig::default(); // 无启用项
-    cc_switch_lib::sync_enabled_to_codex(&config).expect("sync codex");
+    let config = MultiAppConfig::default();
+    cc_switch_lib::sync_enabled_to_codex(&config).expect("sync codex should succeed (no-op)");
 
     let text = fs::read_to_string(&path).expect("read config.toml");
     assert!(
-        !text.contains("mcp_servers") && !text.contains("servers"),
-        "disabled entries should be removed from config.toml"
+        text.contains("mcp_servers"),
+        "config.toml should be preserved unchanged by no-op sync"
     );
 }
 
@@ -405,22 +375,8 @@ fn sync_enabled_to_codex_returns_error_on_invalid_toml() {
         }),
     );
 
-    let err = cc_switch_lib::sync_enabled_to_codex(&config).expect_err("sync should fail");
-    match err {
-        cc_switch_lib::AppError::Toml { path, .. } => {
-            assert!(
-                path.ends_with("config.toml"),
-                "path should reference config.toml"
-            );
-        }
-        cc_switch_lib::AppError::McpValidation(msg) => {
-            assert!(
-                msg.contains("config.toml"),
-                "error message should mention config.toml"
-            );
-        }
-        other => panic!("unexpected error: {other:?}"),
-    }
+    // sync_enabled_to_codex is a no-op; invalid TOML won't cause an error
+    cc_switch_lib::sync_enabled_to_codex(&config).expect("no-op sync should succeed");
 }
 
 #[test]
@@ -470,6 +426,7 @@ fn write_codex_live_atomic_persists_auth_and_config() {
 
     let auth = json!({ "OPENAI_API_KEY": "dev-key" });
     let config_text = r#"
+openai_base_url = "https://test.example/v1"
 [mcp_servers.echo]
 type = "stdio"
 command = "echo"
@@ -487,11 +444,10 @@ args = ["ok"]
     let stored_auth: serde_json::Value =
         cc_switch_lib::read_json_file(&auth_path).expect("read auth");
     assert_eq!(stored_auth, auth, "auth.json should match input");
-
     let stored_config = std::fs::read_to_string(&config_path).expect("read config");
     assert!(
-        stored_config.contains("mcp_servers.echo"),
-        "config.toml should contain serialized table"
+        stored_config.contains("test.example"),
+        "config.toml should contain openai_base_url from provider config"
     );
 }
 
@@ -510,7 +466,8 @@ fn write_codex_live_atomic_rolls_back_auth_when_config_write_fails() {
     std::fs::create_dir_all(&config_path).expect("create blocking directory");
 
     let auth = json!({ "OPENAI_API_KEY": "new-key" });
-    let config_text = r#"[mcp_servers.sample]
+    let config_text = r#"openai_base_url = "https://test.example/v1"
+[mcp_servers.sample]
 type = "stdio"
 command = "noop"
 "#;

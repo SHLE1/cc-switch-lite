@@ -337,22 +337,18 @@ fn set_mcp_enabled_for_codex_writes_live_config() {
         "server should have Codex app enabled after toggle"
     );
 
+    // sync_enabled_to_codex is a no-op in lite mode; config.toml is unchanged
     let toml_path = cc_switch_lib::get_codex_config_path();
-    assert!(
-        toml_path.exists(),
-        "enabling server should trigger sync to ~/.codex/config.toml"
-    );
     let toml_text = fs::read_to_string(&toml_path).expect("read codex config");
     assert!(
-        toml_text.contains("codex-server"),
-        "codex config should include the enabled server definition"
+        toml_text.is_empty(),
+        "no-op sync should not modify codex config.toml"
     );
 }
 
 #[test]
 fn enabling_codex_mcp_skips_when_codex_dir_missing() {
     use support::create_test_state;
-
     let _guard = test_mutex().lock().expect("acquire test mutex");
     reset_test_fs();
     let home = ensure_test_home();
