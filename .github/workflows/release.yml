@@ -462,3 +462,114 @@ jobs:
             If updater signing is configured, `latest.json` and matching `.sig` files are attached for Tauri updater clients.
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+
+  publish-homebrew:
+    name: Publish Homebrew Cask
+    runs-on: ubuntu-22.04
+    needs: publish
+    if: always()
+    steps:
+      - name: Check Homebrew configuration
+        id: homebrew
+        shell: bash
+        env:
+          HOMEBREW_TAP_TOKEN_SECRET: ${{ secrets.HOMEBREW_TAP_TOKEN }}
+        run: |
+          set -euo pipefail
+          if [ -z "${HOMEBREW_TAP_TOKEN_SECRET:-}" ]; then
+            echo "enabled=false" >> "$GITHUB_OUTPUT"
+            echo "HOMEBREW_TAP_TOKEN is not configured; skipping Homebrew cask update."
+            exit 0
+          fi
+          echo "enabled=true" >> "$GITHUB_OUTPUT"
+      - name: Resolve release tag
+        if: steps.homebrew.outputs.enabled == 'true'
+        id: release
+        shell: bash
+        run: |
+          set -euo pipefail
+          TAG="${{ github.event.inputs.tag }}"
+          if [ -z "$TAG" ] && [ "${{ github.ref_type }}" = "tag" ]; then
+            TAG="${{ github.ref_name }}"
+          fi
+          if [ -z "$TAG" ]; then
+            echo "A release tag is required when running this workflow manually from a branch." >&2
+            exit 1
+          fi
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+          echo "version=${TAG#v}" >> "$GITHUB_OUTPUT"
+
+      - name: Download macOS DMG from release
+        if: steps.homebrew.outputs.enabled == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ steps.release.outputs.tag }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          ASSET="CC-Switch-Lite-$TAG-macOS.dmg"
+          gh release download "$TAG" \
+            --repo "$GITHUB_REPOSITORY" \
+            --pattern "$ASSET" \
+            --dir .
+          test -f "$ASSET"
+          SHA256=$(sha256sum "$ASSET" | cut -d ' ' -f 1)
+          echo "sha256=$SHA256" >> "$GITHUB_OUTPUT"
+        id: dmg
+
+      - name: Checkout Homebrew tap
+        if: steps.homebrew.outputs.enabled == 'true'
+        uses: actions/checkout@v4
+        with:
+          repository: SHLE1/homebrew-tap
+          token: ${{ secrets.HOMEBREW_TAP_TOKEN }}
+          path: homebrew-tap
+
+      - name: Update cask
+        if: steps.homebrew.outputs.enabled == 'true'
+        env:
+          TAG: ${{ steps.release.outputs.tag }}
+          VERSION: ${{ steps.release.outputs.version }}
+          SHA256: ${{ steps.dmg.outputs.sha256 }}
+          REPO: ${{ github.repository }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p homebrew-tap/Casks
+          CASK_PATH="homebrew-tap/Casks/cc-switch-lite.rb"
+          URL="https://github.com/$REPO/releases/download/$TAG/CC-Switch-Lite-$TAG-macOS.dmg"
+          cat > "$CASK_PATH" <<CASK
+          cask "cc-switch-lite" do
+            version "$VERSION"
+            sha256 "$SHA256"
+
+            url "$URL",
+                verified: "github.com/$REPO/"
+            name "CC Switch Lite"
+            desc "Provider switcher for Claude Code, Codex, and Gemini CLI"
+            homepage "https://github.com/$REPO"
+
+            app "CC Switch Lite.app"
+          end
+          CASK
+          ruby -0pi -e 'gsub(/^ {10}/, "")' "$CASK_PATH"
+
+      - name: Push cask update
+        if: steps.homebrew.outputs.enabled == 'true'
+        env:
+          TAG: ${{ steps.release.outputs.tag }}
+          VERSION: ${{ steps.release.outputs.version }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd homebrew-tap
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add Casks/cc-switch-lite.rb
+          if git diff --cached --quiet; then
+            echo "Homebrew cask already up to date."
+            exit 0
+          fi
+          git commit -m "Update cc-switch-lite to $VERSION"
+          git push
