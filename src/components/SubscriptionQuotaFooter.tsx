@@ -313,7 +313,9 @@ export const TierBadge: React.FC<{
   return (
     <div className="flex items-center gap-0.5">
       <span className="text-gray-500 dark:text-gray-400">{label}:</span>
-      <span className={`font-semibold tabular-nums ${remainingColor(remaining)}`}>
+      <span
+        className={`font-semibold tabular-nums ${remainingColor(remaining)}`}
+      >
         {t("subscription.utilization", { value: Math.round(remaining) })}
       </span>
       {countdown && (
@@ -363,7 +365,9 @@ const TierBar: React.FC<{
         className="flex items-center gap-2 flex-shrink-0"
         style={{ width: "30%" }}
       >
-        <span className={`font-semibold tabular-nums ${remainingColor(remaining)}`}>
+        <span
+          className={`font-semibold tabular-nums ${remainingColor(remaining)}`}
+        >
           {Math.round(remaining)}%
         </span>
         {resetText && (

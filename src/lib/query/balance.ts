@@ -3,7 +3,11 @@ import { balanceApi, type UsageResult } from "@/lib/api/balance";
 
 const REFETCH_INTERVAL = 5 * 60 * 1000;
 
-export type BalanceTemplateType = "balance" | "sub2api" | "newapi" | "unsupported";
+export type BalanceTemplateType =
+  | "balance"
+  | "sub2api"
+  | "newapi"
+  | "unsupported";
 
 export const balanceKeys = {
   all: ["balance"] as const,
@@ -34,7 +38,10 @@ export function useProviderBalanceQuery({
     queryKey: balanceKeys.provider(providerId, templateType, normalizedBaseUrl),
     queryFn: () => {
       if (templateType === "unsupported") {
-        return Promise.resolve({ success: false, error: "Unsupported balance provider" });
+        return Promise.resolve({
+          success: false,
+          error: "Unsupported balance provider",
+        });
       }
       if (templateType === "sub2api" || templateType === "newapi") {
         return balanceApi.getApiUsageBalance(

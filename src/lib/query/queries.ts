@@ -1,12 +1,5 @@
-import {
-  useQuery,
-  type UseQueryResult,
-} from "@tanstack/react-query";
-import {
-  providersApi,
-  settingsApi,
-  type AppId,
-} from "@/lib/api";
+import { useQuery, type UseQueryResult } from "@tanstack/react-query";
+import { providersApi, settingsApi, type AppId } from "@/lib/api";
 import type { Provider, Settings } from "@/types";
 
 const sortProviders = (

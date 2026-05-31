@@ -176,8 +176,6 @@ function App() {
     setConfirmDelete(null);
   };
 
-
-
   const handleDuplicateProvider = async (provider: Provider) => {
     const duplicatedProvider: Omit<Provider, "id" | "createdAt"> = {
       name: `${provider.name} copy`,
@@ -185,7 +183,9 @@ function App() {
       websiteUrl: provider.websiteUrl,
       category: provider.category,
       notes: provider.notes,
-      meta: provider.meta ? JSON.parse(JSON.stringify(provider.meta)) : undefined,
+      meta: provider.meta
+        ? JSON.parse(JSON.stringify(provider.meta))
+        : undefined,
       icon: provider.icon,
       iconColor: provider.iconColor,
     };

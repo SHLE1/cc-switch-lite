@@ -76,7 +76,8 @@ export function ProviderCard({
     return displayUrl !== fallbackUrlText;
   }, [provider.notes, displayUrl, fallbackUrlText]);
   const isOfficial = provider.category === "official";
-  const isCodexOauth = provider.meta?.providerType === PROVIDER_TYPES.CODEX_OAUTH;
+  const isCodexOauth =
+    provider.meta?.providerType === PROVIDER_TYPES.CODEX_OAUTH;
 
   const handleOpenWebsite = () => {
     if (isClickableUrl) onOpenWebsite(displayUrl);
@@ -165,10 +166,7 @@ export function ProviderCard({
                 isCurrent={true}
               />
             ) : (
-              <ApiBalanceFooter
-                provider={provider}
-                appId={appId}
-              />
+              <ApiBalanceFooter provider={provider} appId={appId} />
             )}
           </div>
           <div className="flex items-center gap-1.5 flex-shrink-0 opacity-0 pointer-events-none group-hover:opacity-100 group-focus-within:opacity-100 group-hover:pointer-events-auto group-focus-within:pointer-events-auto transition-opacity duration-200">

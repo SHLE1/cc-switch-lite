@@ -70,7 +70,9 @@ const parseConfig = (value: string): Record<string, unknown> => {
   }
 };
 
-const codexAuth = (config: Record<string, unknown>): Record<string, unknown> => {
+const codexAuth = (
+  config: Record<string, unknown>,
+): Record<string, unknown> => {
   const auth = config.auth;
   return auth && typeof auth === "object" && !Array.isArray(auth)
     ? (auth as Record<string, unknown>)
@@ -80,7 +82,9 @@ const codexAuth = (config: Record<string, unknown>): Record<string, unknown> => 
 const codexConfigText = (config: Record<string, unknown>): string =>
   typeof config.config === "string" ? config.config : "";
 
-const claudeEnv = (config: Record<string, unknown>): Record<string, unknown> => {
+const claudeEnv = (
+  config: Record<string, unknown>,
+): Record<string, unknown> => {
   const env = config.env;
   return env && typeof env === "object" && !Array.isArray(env)
     ? (env as Record<string, unknown>)
@@ -169,7 +173,8 @@ export function ProviderForm({
   showButtons = true,
 }: ProviderFormProps) {
   const { t } = useTranslation();
-  const initialConfig = initialData?.settingsConfig ?? defaultConfigForApp(appId);
+  const initialConfig =
+    initialData?.settingsConfig ?? defaultConfigForApp(appId);
   const initialConfigJson = stringifyConfig(initialConfig);
   const initialApiKeyField =
     initialData?.meta?.apiKeyField ??
@@ -183,14 +188,16 @@ export function ProviderForm({
       notes: initialData?.notes ?? "",
       settingsConfig: initialConfigJson,
       authJson:
-        appId === "codex" ? stringifyConfig(codexAuth(initialConfig)) : undefined,
+        appId === "codex"
+          ? stringifyConfig(codexAuth(initialConfig))
+          : undefined,
       apiKey:
         appId === "codex"
           ? getCodexApiKey(initialConfig)
           : getApiKeyFromConfig(initialConfigJson, appId),
       baseUrl:
         appId === "codex"
-          ? extractCodexBaseUrl(codexConfigText(initialConfig)) ?? ""
+          ? (extractCodexBaseUrl(codexConfigText(initialConfig)) ?? "")
           : getClaudeBaseUrl(initialConfig),
       model: appId === "codex" ? "" : getClaudeModel(initialConfig),
       apiKeyField: initialApiKeyField,
@@ -227,7 +234,10 @@ export function ProviderForm({
         values.balanceTemplate === "unsupported"
           ? values.balanceTemplate
           : undefined,
-      apiKeyField: appId === "claude" ? values.apiKeyField : initialData?.meta?.apiKeyField,
+      apiKeyField:
+        appId === "claude"
+          ? values.apiKeyField
+          : initialData?.meta?.apiKeyField,
     };
 
     let settingsConfig = values.settingsConfig;
@@ -255,14 +265,20 @@ export function ProviderForm({
 
   return (
     <Form {...form}>
-      <form id="provider-form" onSubmit={form.handleSubmit(handleSubmit)} className="space-y-6">
+      <form
+        id="provider-form"
+        onSubmit={form.handleSubmit(handleSubmit)}
+        className="space-y-6"
+      >
         <div className="grid gap-4 sm:grid-cols-2">
           <FormField
             control={form.control}
             name="name"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>{t("providerForm.name", { defaultValue: "名称" })}</FormLabel>
+                <FormLabel>
+                  {t("providerForm.name", { defaultValue: "名称" })}
+                </FormLabel>
                 <FormControl>
                   <Input {...field} autoComplete="off" />
                 </FormControl>
@@ -275,7 +291,9 @@ export function ProviderForm({
             name="websiteUrl"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>{t("providerForm.website", { defaultValue: "网站" })}</FormLabel>
+                <FormLabel>
+                  {t("providerForm.website", { defaultValue: "网站" })}
+                </FormLabel>
                 <FormControl>
                   <Input {...field} type="url" autoComplete="off" />
                 </FormControl>
@@ -297,10 +315,17 @@ export function ProviderForm({
                     {...field}
                     type="password"
                     autoComplete="off"
-                    placeholder={appId === "codex" ? "OPENAI_API_KEY" : "ANTHROPIC_AUTH_TOKEN"}
+                    placeholder={
+                      appId === "codex"
+                        ? "OPENAI_API_KEY"
+                        : "ANTHROPIC_AUTH_TOKEN"
+                    }
                     onChange={(event) => {
                       field.onChange(event);
-                      updateConfigField({ apiKey: event.target.value, apiKeyField });
+                      updateConfigField({
+                        apiKey: event.target.value,
+                        apiKeyField,
+                      });
                     }}
                   />
                 </FormControl>
@@ -318,9 +343,14 @@ export function ProviderForm({
                   <Select
                     value={field.value ?? initialApiKeyField}
                     onValueChange={(value) => {
-                      const next = value as "ANTHROPIC_AUTH_TOKEN" | "ANTHROPIC_API_KEY";
+                      const next = value as
+                        | "ANTHROPIC_AUTH_TOKEN"
+                        | "ANTHROPIC_API_KEY";
                       field.onChange(next);
-                      updateConfigField({ apiKey: form.getValues("apiKey"), apiKeyField: next });
+                      updateConfigField({
+                        apiKey: form.getValues("apiKey"),
+                        apiKeyField: next,
+                      });
                     }}
                   >
                     <FormControl>
@@ -329,8 +359,12 @@ export function ProviderForm({
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
-                      <SelectItem value="ANTHROPIC_AUTH_TOKEN">ANTHROPIC_AUTH_TOKEN</SelectItem>
-                      <SelectItem value="ANTHROPIC_API_KEY">ANTHROPIC_API_KEY</SelectItem>
+                      <SelectItem value="ANTHROPIC_AUTH_TOKEN">
+                        ANTHROPIC_AUTH_TOKEN
+                      </SelectItem>
+                      <SelectItem value="ANTHROPIC_API_KEY">
+                        ANTHROPIC_API_KEY
+                      </SelectItem>
                     </SelectContent>
                   </Select>
                   <FormMessage />
@@ -342,13 +376,19 @@ export function ProviderForm({
             control={form.control}
             name="baseUrl"
             render={({ field }) => (
-              <FormItem className={appId === "codex" ? undefined : "sm:col-start-1"}>
+              <FormItem
+                className={appId === "codex" ? undefined : "sm:col-start-1"}
+              >
                 <FormLabel>Base URL</FormLabel>
                 <FormControl>
                   <Input
                     {...field}
                     autoComplete="off"
-                    placeholder={appId === "codex" ? "https://api.example.com/v1" : "https://api.example.com"}
+                    placeholder={
+                      appId === "codex"
+                        ? "https://api.example.com/v1"
+                        : "https://api.example.com"
+                    }
                     onChange={(event) => {
                       field.onChange(event);
                       updateConfigField({ baseUrl: event.target.value });
@@ -390,7 +430,10 @@ export function ProviderForm({
           render={({ field }) => (
             <FormItem>
               <FormLabel>余额查询模板</FormLabel>
-              <Select value={field.value ?? "auto"} onValueChange={field.onChange}>
+              <Select
+                value={field.value ?? "auto"}
+                onValueChange={field.onChange}
+              >
                 <FormControl>
                   <SelectTrigger className="max-w-sm">
                     <SelectValue />
@@ -404,7 +447,14 @@ export function ProviderForm({
                 </SelectContent>
               </Select>
               <p className="text-xs text-muted-foreground">
-                当前：{balanceTemplate === "sub2api" ? "sub2api" : balanceTemplate === "newapi" ? "new-api" : balanceTemplate === "unsupported" ? "不支持查询" : "自动识别"}
+                当前：
+                {balanceTemplate === "sub2api"
+                  ? "sub2api"
+                  : balanceTemplate === "newapi"
+                    ? "new-api"
+                    : balanceTemplate === "unsupported"
+                      ? "不支持查询"
+                      : "自动识别"}
               </p>
               <FormMessage />
             </FormItem>
@@ -416,7 +466,9 @@ export function ProviderForm({
           name="notes"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>{t("providerForm.notes", { defaultValue: "备注" })}</FormLabel>
+              <FormLabel>
+                {t("providerForm.notes", { defaultValue: "备注" })}
+              </FormLabel>
               <FormControl>
                 <Input {...field} autoComplete="off" />
               </FormControl>
@@ -441,7 +493,9 @@ export function ProviderForm({
                   />
                 </FormControl>
                 <p className="text-xs text-muted-foreground">
-                  这里单独编辑 Codex 的 auth.json。config.toml 不在这里展示；Base URL 字段只会让后端补丁 managed openai_base_url 行。
+                  这里单独编辑 Codex 的 auth.json。config.toml
+                  不在这里展示；Base URL 字段只会让后端补丁 managed
+                  openai_base_url 行。
                 </p>
                 <FormMessage />
               </FormItem>
@@ -462,7 +516,9 @@ export function ProviderForm({
                     className="font-mono text-sm"
                   />
                 </FormControl>
-                <p className="text-xs text-muted-foreground">可直接编辑完整 settings.json。</p>
+                <p className="text-xs text-muted-foreground">
+                  可直接编辑完整 settings.json。
+                </p>
                 <FormMessage />
               </FormItem>
             )}

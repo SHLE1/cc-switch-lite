@@ -35,7 +35,11 @@ export function ProviderActions({
             "bg-gray-200 text-muted-foreground hover:bg-gray-200 hover:text-muted-foreground dark:bg-gray-700 dark:hover:bg-gray-700",
         )}
       >
-        {isCurrent ? <Check className="h-4 w-4" /> : <Play className="h-4 w-4" />}
+        {isCurrent ? (
+          <Check className="h-4 w-4" />
+        ) : (
+          <Play className="h-4 w-4" />
+        )}
         {isCurrent
           ? t("provider.inUse", { defaultValue: "已启用" })
           : t("provider.enable", { defaultValue: "启用" })}

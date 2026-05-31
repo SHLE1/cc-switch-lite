@@ -55,7 +55,9 @@ export const providerSchema = z.object({
   apiKeyField: z.enum(["ANTHROPIC_AUTH_TOKEN", "ANTHROPIC_API_KEY"]).optional(),
   baseUrl: z.string().optional(),
   model: z.string().optional(),
-  balanceTemplate: z.enum(["auto", "sub2api", "newapi", "unsupported"]).optional(),
+  balanceTemplate: z
+    .enum(["auto", "sub2api", "newapi", "unsupported"])
+    .optional(),
   authJson: jsonString("请填写 auth.json").optional(),
   settingsConfig: jsonString("请填写配置内容"),
 });

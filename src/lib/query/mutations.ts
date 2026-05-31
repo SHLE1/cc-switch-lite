@@ -28,11 +28,17 @@ export const useAddProviderMutation = (appId: AppId) => {
       try {
         await providersApi.updateTrayMenu();
       } catch (trayError) {
-        console.error("Failed to update tray menu after adding provider", trayError);
+        console.error(
+          "Failed to update tray menu after adding provider",
+          trayError,
+        );
       }
-      toast.success(t("notifications.providerAdded", { defaultValue: "供应商已添加" }), {
-        closeButton: true,
-      });
+      toast.success(
+        t("notifications.providerAdded", { defaultValue: "供应商已添加" }),
+        {
+          closeButton: true,
+        },
+      );
     },
     onError: (error: Error) => {
       const detail = extractErrorMessage(error) || t("common.unknown");
@@ -63,9 +69,12 @@ export const useUpdateProviderMutation = (appId: AppId) => {
     },
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: ["providers", appId] });
-      toast.success(t("notifications.updateSuccess", { defaultValue: "供应商更新成功" }), {
-        closeButton: true,
-      });
+      toast.success(
+        t("notifications.updateSuccess", { defaultValue: "供应商更新成功" }),
+        {
+          closeButton: true,
+        },
+      );
     },
     onError: (error: Error) => {
       const detail = extractErrorMessage(error) || t("common.unknown");
@@ -92,11 +101,17 @@ export const useDeleteProviderMutation = (appId: AppId) => {
       try {
         await providersApi.updateTrayMenu();
       } catch (trayError) {
-        console.error("Failed to update tray menu after deleting provider", trayError);
+        console.error(
+          "Failed to update tray menu after deleting provider",
+          trayError,
+        );
       }
-      toast.success(t("notifications.deleteSuccess", { defaultValue: "供应商已删除" }), {
-        closeButton: true,
-      });
+      toast.success(
+        t("notifications.deleteSuccess", { defaultValue: "供应商已删除" }),
+        {
+          closeButton: true,
+        },
+      );
     },
     onError: (error: Error) => {
       const detail = extractErrorMessage(error) || t("common.unknown");
@@ -128,24 +143,30 @@ export const useSwitchProviderMutation = (appId: AppId) => {
       try {
         await providersApi.updateTrayMenu();
       } catch (trayError) {
-        console.error("Failed to update tray menu after switching provider", trayError);
+        console.error(
+          "Failed to update tray menu after switching provider",
+          trayError,
+        );
       }
     },
     onError: (error: Error) => {
       const detail = extractErrorMessage(error) || t("common.unknown");
-      toast.error(t("notifications.switchFailedTitle", { defaultValue: "切换失败" }), {
-        description: t("notifications.switchFailed", {
-          defaultValue: "切换失败：{{error}}",
-          error: detail,
-        }),
-        duration: 6000,
-        action: {
-          label: t("common.copy", { defaultValue: "复制" }),
-          onClick: () => {
-            navigator.clipboard?.writeText(detail).catch(() => undefined);
+      toast.error(
+        t("notifications.switchFailedTitle", { defaultValue: "切换失败" }),
+        {
+          description: t("notifications.switchFailed", {
+            defaultValue: "切换失败：{{error}}",
+            error: detail,
+          }),
+          duration: 6000,
+          action: {
+            label: t("common.copy", { defaultValue: "复制" }),
+            onClick: () => {
+              navigator.clipboard?.writeText(detail).catch(() => undefined);
+            },
           },
         },
-      });
+      );
     },
   });
 };
@@ -160,9 +181,12 @@ export const useSaveSettingsMutation = () => {
     },
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: ["settings"] });
-      toast.success(t("notifications.settingsSaved", { defaultValue: "设置已保存" }), {
-        closeButton: true,
-      });
+      toast.success(
+        t("notifications.settingsSaved", { defaultValue: "设置已保存" }),
+        {
+          closeButton: true,
+        },
+      );
     },
     onError: (error: Error) => {
       const detail = extractErrorMessage(error) || t("common.unknown");

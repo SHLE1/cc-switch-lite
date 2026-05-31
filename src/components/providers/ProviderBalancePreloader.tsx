@@ -39,7 +39,9 @@ export function ProviderBalancePreloader({
             templateType,
           };
         })
-        .filter((target): target is NonNullable<typeof target> => Boolean(target)),
+        .filter((target): target is NonNullable<typeof target> =>
+          Boolean(target),
+        ),
     [appId, providers],
   );
 

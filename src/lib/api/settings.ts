@@ -10,7 +10,9 @@ export const settingsApi = {
     return await invoke("save_settings", { settings });
   },
 
-  async applyClaudePluginConfig(options: { official: boolean }): Promise<boolean> {
+  async applyClaudePluginConfig(options: {
+    official: boolean;
+  }): Promise<boolean> {
     const { official } = options;
     return await invoke("apply_claude_plugin_config", { official });
   },

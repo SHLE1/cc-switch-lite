@@ -1,7 +1,13 @@
 import { RefreshCw, AlertCircle, Clock } from "lucide-react";
 import type { Provider } from "@/types";
-import { useProviderBalanceQuery, type BalanceTemplateType } from "@/lib/query/balance";
-import { extractCodexBaseUrl, getApiKeyFromConfig } from "@/utils/providerConfigUtils";
+import {
+  useProviderBalanceQuery,
+  type BalanceTemplateType,
+} from "@/lib/query/balance";
+import {
+  extractCodexBaseUrl,
+  getApiKeyFromConfig,
+} from "@/utils/providerConfigUtils";
 import type { AppId, UsageData } from "@/lib/api";
 import { cn } from "@/lib/utils";
 
@@ -23,27 +29,39 @@ const displayUnit = (unit: string | undefined): string => {
   return unit;
 };
 
-const firstUsableItem = (items: UsageData[] | undefined): UsageData | undefined =>
+const firstUsableItem = (
+  items: UsageData[] | undefined,
+): UsageData | undefined =>
   items?.find(
     (item) =>
       item.isValid !== false &&
       (typeof item.remaining === "number" || typeof item.used === "number"),
   );
 
-export const normalizeBalanceTemplate = (value: unknown): BalanceTemplateType | undefined => {
-  if (value === "sub2api" || value === "newapi" || value === "balance" || value === "unsupported") {
+export const normalizeBalanceTemplate = (
+  value: unknown,
+): BalanceTemplateType | undefined => {
+  if (
+    value === "sub2api" ||
+    value === "newapi" ||
+    value === "balance" ||
+    value === "unsupported"
+  ) {
     return value;
   }
   return undefined;
 };
-export const extractProviderBaseUrl = (provider: Provider): string | undefined => {
+export const extractProviderBaseUrl = (
+  provider: Provider,
+): string | undefined => {
   const usageBaseUrl = provider.meta?.usage_script?.baseUrl?.trim();
   if (usageBaseUrl) return usageBaseUrl;
 
   const config = provider.settingsConfig;
   const env = config.env;
   if (env && typeof env === "object" && !Array.isArray(env)) {
-    const anthropicBaseUrl = (env as Record<string, unknown>).ANTHROPIC_BASE_URL;
+    const anthropicBaseUrl = (env as Record<string, unknown>)
+      .ANTHROPIC_BASE_URL;
     if (typeof anthropicBaseUrl === "string" && anthropicBaseUrl.trim()) {
       return anthropicBaseUrl.trim();
     }
@@ -57,7 +75,10 @@ export const extractProviderBaseUrl = (provider: Provider): string | undefined =
   return undefined;
 };
 
-export const extractProviderApiKey = (provider: Provider, appId: AppId): string | undefined => {
+export const extractProviderApiKey = (
+  provider: Provider,
+  appId: AppId,
+): string | undefined => {
   const usageApiKey = provider.meta?.usage_script?.apiKey?.trim();
   if (usageApiKey) return usageApiKey;
 
@@ -71,7 +92,8 @@ export const extractProviderApiKey = (provider: Provider, appId: AppId): string 
       const tokens = record.tokens;
       if (tokens && typeof tokens === "object" && !Array.isArray(tokens)) {
         const tokenKey = (tokens as Record<string, unknown>).OPENAI_API_KEY;
-        if (typeof tokenKey === "string" && tokenKey.trim()) return tokenKey.trim();
+        if (typeof tokenKey === "string" && tokenKey.trim())
+          return tokenKey.trim();
       }
     }
   }
@@ -80,22 +102,24 @@ export const extractProviderApiKey = (provider: Provider, appId: AppId): string 
   return apiKey || undefined;
 };
 
-export const inferProviderBalanceTemplate = (provider: Provider): BalanceTemplateType => {
-  const usageTemplate = normalizeBalanceTemplate(provider.meta?.usage_script?.templateType);
+export const inferProviderBalanceTemplate = (
+  provider: Provider,
+): BalanceTemplateType => {
+  const usageTemplate = normalizeBalanceTemplate(
+    provider.meta?.usage_script?.templateType,
+  );
   if (usageTemplate) return usageTemplate;
 
   const configured = normalizeBalanceTemplate(provider.meta?.balanceTemplate);
   if (configured) return configured;
 
-  const text = `${provider.name} ${provider.websiteUrl ?? ""} ${extractProviderBaseUrl(provider) ?? ""}`.toLowerCase();
+  const text =
+    `${provider.name} ${provider.websiteUrl ?? ""} ${extractProviderBaseUrl(provider) ?? ""}`.toLowerCase();
   if (text.includes("sub2api") || text.includes("sub2-api")) return "sub2api";
   if (text.includes("newapi") || text.includes("new-api")) return "newapi";
   return "balance";
 };
-export function ApiBalanceFooter({
-  provider,
-  appId,
-}: ApiBalanceFooterProps) {
+export function ApiBalanceFooter({ provider, appId }: ApiBalanceFooterProps) {
   const baseUrl = extractProviderBaseUrl(provider);
   const apiKey = extractProviderApiKey(provider, appId);
   const templateType = inferProviderBalanceTemplate(provider);
