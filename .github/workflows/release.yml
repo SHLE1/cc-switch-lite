@@ -102,6 +102,11 @@ jobs:
       - name: Setup Rust
         uses: dtolnay/rust-toolchain@stable
 
+      - name: Add macOS universal Rust targets
+        if: matrix.platform == 'macos'
+        shell: bash
+        run: rustup target add aarch64-apple-darwin x86_64-apple-darwin
+
       - name: Cache Cargo registry and build output
         uses: actions/cache@v4
         with:
