@@ -417,7 +417,6 @@ pub struct CodexModelConfig {
     pub reasoning_effort: Option<String>,
 }
 
-
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct UniversalProviderModels {
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -615,8 +614,8 @@ requires_openai_auth = true"#
 #[cfg(test)]
 mod tests {
     use super::{
-        ClaudeModelConfig, CodexModelConfig, Provider,
-        ProviderManager, ProviderMeta, UniversalProvider,
+        ClaudeModelConfig, CodexModelConfig, Provider, ProviderManager, ProviderMeta,
+        UniversalProvider,
     };
     use serde_json::json;
 
@@ -817,10 +816,6 @@ mod tests {
 
         assert!(universal.to_codex_provider().is_none());
     }
-
-
-
-
 
     #[test]
     fn universal_codex_provider_origin_base_url_adds_v1() {

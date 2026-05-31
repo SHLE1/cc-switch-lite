@@ -89,7 +89,6 @@ pub async fn get_migration_result() -> Result<bool, String> {
     Ok(crate::init_status::take_migration_success())
 }
 
-
 #[derive(serde::Serialize)]
 pub struct ToolVersion {
     name: String,
@@ -374,10 +373,7 @@ fn try_get_version_wsl(
     use std::process::Command;
 
     // 防御性断言：tool 只能是预定义的值
-    debug_assert!(
-        VALID_TOOLS.contains(&tool),
-        "unexpected tool name: {tool}"
-    );
+    debug_assert!(VALID_TOOLS.contains(&tool), "unexpected tool name: {tool}");
 
     // 校验 distro 名称，防止命令注入
     if !is_valid_wsl_distro_name(distro) {
@@ -812,7 +808,6 @@ fn extract_env_vars_from_config(
             env_vars.push(("OPENAI_API_KEY".to_string(), auth.to_string()));
         }
     }
-
 
     env_vars
 }

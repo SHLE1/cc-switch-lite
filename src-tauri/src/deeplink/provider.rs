@@ -350,7 +350,6 @@ requires_openai_auth = true
     })
 }
 
-
 // =============================================================================
 // Config Merge Logic
 // =============================================================================
@@ -540,7 +539,6 @@ fn merge_codex_config(
     Ok(())
 }
 
-
 /// Extract base_url from Codex TOML config
 fn extract_codex_base_url(toml_value: &toml::Value) -> Option<String> {
     // Try to find base_url in model_providers section
@@ -553,4 +551,3 @@ fn extract_codex_base_url(toml_value: &toml::Value) -> Option<String> {
     }
     None
 }
-

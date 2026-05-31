@@ -52,7 +52,6 @@ pub fn take_migration_success() -> bool {
     }
 }
 
-
 #[cfg(test)]
 mod tests {
     use super::*;

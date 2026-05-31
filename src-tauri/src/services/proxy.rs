@@ -940,7 +940,6 @@ impl ProxyService {
                 .map_err(|e| format!("备份 Codex 配置失败: {e}"))?;
         }
 
-
         log::info!("已备份所有应用的 Live 配置");
         Ok(())
     }
@@ -1033,7 +1032,6 @@ impl ProxyService {
             self.write_codex_live(&live_config)?;
             log::info!("Codex Live 配置已接管，代理地址: {proxy_codex_base_url}");
         }
-
 
         Ok(())
     }
@@ -1367,7 +1365,6 @@ impl ProxyService {
     fn remove_local_toml_base_url(toml_str: &str) -> String {
         crate::codex_config::remove_codex_toml_base_url_if(toml_str, Self::is_local_proxy_url)
     }
-
 
     pub async fn is_takeover_active(&self) -> Result<bool, String> {
         let status = self.get_takeover_status().await?;
@@ -1766,7 +1763,6 @@ impl ProxyService {
 
         Ok(())
     }
-
 
     // ==================== 原有方法 ====================
 

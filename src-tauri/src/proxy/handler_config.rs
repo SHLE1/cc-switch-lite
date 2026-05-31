@@ -51,8 +51,6 @@ pub fn codex_stream_usage_event_filter(data: &str) -> bool {
     data.contains("\"response.completed\"") || data.contains("\"usage\"")
 }
 
-
-
 // ============================================================================
 // 模型提取器实现
 // ============================================================================
@@ -141,8 +139,6 @@ pub const CODEX_PARSER_CONFIG: UsageParserConfig = UsageParserConfig {
     app_type_str: "codex",
 };
 
-
-
 // ============================================================================
 // Handler 配置（预留，用于进一步简化）
 // ============================================================================
@@ -189,4 +185,3 @@ pub const CODEX_RESPONSES_HANDLER_CONFIG: HandlerConfig = HandlerConfig {
     app_type_str: "codex",
     parser_config: &CODEX_PARSER_CONFIG,
 };
-

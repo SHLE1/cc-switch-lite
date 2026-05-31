@@ -283,9 +283,7 @@ fn restore_skill_backup_restores_files_to_ssot_and_current_app() {
 
     assert_eq!(restored.directory, "restore-skill");
     assert!(restored.apps.claude, "restored skill should enable Claude");
-    assert!(
-        !restored.apps.codex,
-    );
+    assert!(!restored.apps.codex,);
     assert!(
         home.join(".cc-switch")
             .join("skills")

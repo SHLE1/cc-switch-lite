@@ -493,7 +493,6 @@ impl MultiAppConfig {
             }
         }
 
-
         // 执行 MCP 迁移（v3.6.x → v3.7.0）
         let migrated = config.migrate_mcp_to_unified()?;
         if migrated {

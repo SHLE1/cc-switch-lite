@@ -158,7 +158,10 @@ command = "say"
                 "type": "stdio",
                 "command": "echo"
             }),
-            apps: McpApps { claude: false, codex: true },
+            apps: McpApps {
+                claude: false,
+                codex: true,
+            },
             description: None,
             homepage: None,
             docs: None,
@@ -645,7 +648,6 @@ fn legacy_common_config_migration_flag_roundtrip() {
         "migration flag should be removable for tests/debugging"
     );
 }
-
 
 #[test]
 fn provider_service_switch_claude_updates_live_and_state() {

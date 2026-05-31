@@ -25,8 +25,6 @@ impl AuthInfo {
         }
     }
 
-
-
     /// 返回遮蔽后的 API Key（用于日志输出）
     ///
     /// 显示前4位和后4位，中间用 `...` 代替
@@ -93,7 +91,6 @@ pub enum AuthStrategy {
     ///
     /// - Header: `Authorization: Bearer <api_key>`
     Bearer,
-
 
     /// Codex OAuth 认证方式（ChatGPT Plus/Pro）
     ///

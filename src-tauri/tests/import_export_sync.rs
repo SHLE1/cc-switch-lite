@@ -899,7 +899,6 @@ fn create_backup_retains_only_latest_entries() {
     );
 }
 
-
 #[test]
 fn export_sql_writes_to_target_path() {
     let _guard = test_mutex().lock().expect("acquire test mutex");

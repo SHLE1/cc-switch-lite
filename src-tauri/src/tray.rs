@@ -80,7 +80,6 @@ pub const TRAY_SECTIONS: [TrayAppSection; 2] = [
     },
 ];
 
-
 /// 对供应商列表排序：sort_index → created_at → name
 fn sort_providers(
     providers: &indexmap::IndexMap<String, crate::provider::Provider>,
@@ -495,7 +494,6 @@ pub fn handle_tray_menu_event(app: &tauri::AppHandle, event_id: &str) {
     }
 }
 
-
 /// 合并多次快速触发的"usage 标题软更新"：批量刷新期间多个 usage 命令
 /// 同时成功时，只会产生一次就地 `set_text` 批量调用。走软更新而不是
 /// `refresh_tray_menu` 整建，避免用户打开中的菜单被 macOS 系统关闭。
@@ -516,4 +514,3 @@ pub fn schedule_tray_refresh(app: &tauri::AppHandle) {
         update_tray_usage_labels(&app);
     });
 }
-

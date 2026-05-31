@@ -684,7 +684,6 @@ pub fn sync_universal_provider(
     Ok(result)
 }
 
-
 // ============================================================================
 // OpenClaw 专属命令 → 已迁移至 commands/openclaw.rs
 // ============================================================================
@@ -766,8 +765,6 @@ mod import_claude_desktop_tests {
         assert_eq!(r.model, "kimi-k2");
         assert_eq!(r.label_override.as_deref(), Some("Kimi K2"));
     }
-
-
 
     #[test]
     fn same_upstream_across_three_aliases_merges_to_one_route() {

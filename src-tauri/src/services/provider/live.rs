@@ -2,7 +2,6 @@
 //!
 //! Handles reading and writing live configuration files for Claude and Codex.
 
-
 use serde_json::{json, Value};
 use toml_edit::{DocumentMut, Item, TableLike};
 
@@ -658,7 +657,6 @@ pub(crate) fn write_live_snapshot(app_type: &AppType, provider: &Provider) -> Re
     Ok(())
 }
 
-
 pub(crate) fn sync_current_provider_for_app_to_live(
     state: &AppState,
     app_type: &AppType,
@@ -685,11 +683,11 @@ pub(crate) fn sync_current_provider_for_app_to_live(
 /// Sync current provider to live configuration.
 pub fn sync_current_to_live(state: &AppState) -> Result<(), AppError> {
     for app_type in AppType::all() {
-        let current_id = match crate::settings::get_effective_current_provider(&state.db, &app_type)?
-        {
-            Some(id) => id,
-            None => continue,
-        };
+        let current_id =
+            match crate::settings::get_effective_current_provider(&state.db, &app_type)? {
+                Some(id) => id,
+                None => continue,
+            };
 
         let providers = state.db.get_all_providers(app_type.as_str())?;
         if let Some(provider) = providers.get(&current_id) {
@@ -740,7 +738,6 @@ pub fn read_live_settings(app_type: AppType) -> Result<Value, AppError> {
 /// Returns `Ok(true)` if a provider was actually imported,
 /// `Ok(false)` if skipped (providers already exist for this app).
 pub fn import_default_config(state: &AppState, app_type: AppType) -> Result<bool, AppError> {
-
     // 允许 "只有官方 seed 预设" 的情况下继续导入 live：
     // - 启动编排顺序是先 import 后 seed，新用户启动时 providers 为空，导入照常
     // - 老用户已有非 seed provider，跳过导入（正确）
@@ -811,10 +808,8 @@ pub fn should_import_default_config_on_startup(
     state: &AppState,
     app_type: &AppType,
 ) -> Result<bool, AppError> {
-
     Ok(!state.db.has_any_provider_for_app(app_type.as_str())?)
 }
-
 
 #[cfg(test)]
 mod tests {

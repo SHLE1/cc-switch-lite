@@ -110,7 +110,6 @@ pub fn import_mcp_from_deeplink(
                 merged_apps.codex = true;
             }
 
-
             McpServer {
                 id: existing.id.clone(),
                 name: existing.name.clone(),

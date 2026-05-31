@@ -6,7 +6,6 @@
 use serde::{Deserialize, Serialize};
 use std::time::{SystemTime, UNIX_EPOCH};
 
-
 use crate::config;
 
 // ── 数据类型 ──────────────────────────────────────────────
@@ -299,7 +298,6 @@ pub const TIER_SEVEN_DAY_SONNET: &str = "seven_day_sonnet";
 /// Coding Plan（Kimi / MiniMax）的周窗口 tier 名。与 `coding_plan::query_*`
 /// 写入、tray 渲染、commands::provider 扁平化三处共用同一标识。
 pub const TIER_WEEKLY_LIMIT: &str = "weekly_limit";
-
 
 const KNOWN_TIERS: &[&str] = &[
     TIER_FIVE_HOUR,
@@ -725,7 +723,6 @@ pub(crate) async fn query_codex_quota(
         queried_at: Some(now_millis()),
     }
 }
-
 
 // ── 入口函数 ──────────────────────────────────────────────
 

@@ -939,7 +939,7 @@ impl RequestForwarder {
         mapped_body = super::model_mapper::strip_one_m_suffix_for_upstream_from_body(mapped_body);
 
         let resolved_claude_api_format = if adapter.name() == "Claude" {
-Some(super::providers::get_claude_api_format(provider).to_string())
+            Some(super::providers::get_claude_api_format(provider).to_string())
         } else {
             None
         };
@@ -1757,7 +1757,7 @@ fn is_managed_account_upstream_url(url: &str) -> bool {
         return false;
     };
 
-host == "chatgpt.com" && uri.path().starts_with("/backend-api/codex")
+    host == "chatgpt.com" && uri.path().starts_with("/backend-api/codex")
 }
 
 fn headers_contain_proxy_placeholder(headers: &http::HeaderMap) -> bool {
@@ -2208,7 +2208,6 @@ mod tests {
         );
     }
 
-
     #[test]
     fn codex_oauth_upstream_rejects_proxy_managed_placeholder_header() {
         let mut headers = HeaderMap::new();
@@ -2258,15 +2257,12 @@ mod tests {
             &provider,
             Some("openai_responses")
         ));
-        assert!(!should_preserve_exact_header_case(
-            "Codex", &provider, None
-        ));
+        assert!(!should_preserve_exact_header_case("Codex", &provider, None));
     }
 
     #[test]
     fn exact_header_case_skipped_for_codex_oauth() {
         let codex_oauth = test_provider_with_type(Some("codex_oauth"));
-
     }
 
     #[test]
@@ -2313,8 +2309,6 @@ mod tests {
         assert_eq!(passthrough_query.as_deref(), Some("foo=bar"));
     }
 
-
-
     #[test]
     fn append_query_to_full_url_preserves_existing_query_string() {
         let url = append_query_to_full_url("https://relay.example/api?foo=bar", Some("x-id=1"));
@@ -2355,6 +2349,4 @@ mod tests {
             &headers
         ));
     }
-
-
 }

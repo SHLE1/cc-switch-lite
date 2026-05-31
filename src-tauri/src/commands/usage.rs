@@ -263,7 +263,6 @@ pub fn sync_session_usage(
         }
     }
 
-
     Ok(result)
 }
 

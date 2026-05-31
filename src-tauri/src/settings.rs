@@ -580,7 +580,6 @@ pub fn get_codex_override_dir() -> Option<PathBuf> {
         .map(|p| resolve_override_path(p))
 }
 
-
 // ===== 当前供应商管理函数 =====
 
 /// 获取指定应用类型的当前供应商 ID（从本地 settings 读取）

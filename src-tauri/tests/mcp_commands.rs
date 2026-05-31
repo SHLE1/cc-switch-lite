@@ -222,7 +222,10 @@ command = "echo"
                 "type": "stdio",
                 "command": "echo"
             }),
-            apps: McpApps { claude: false, codex: true },
+            apps: McpApps {
+                claude: false,
+                codex: true,
+            },
             description: None,
             homepage: None,
             docs: None,
@@ -372,7 +375,10 @@ fn enabling_codex_mcp_skips_when_codex_dir_missing() {
                 "type": "stdio",
                 "command": "echo"
             }),
-            apps: McpApps { claude: false, codex: false },
+            apps: McpApps {
+                claude: false,
+                codex: false,
+            },
             description: None,
             homepage: None,
             docs: None,
@@ -411,7 +417,10 @@ fn upsert_mcp_server_disabling_app_removes_from_claude_live_config() {
                 "type": "stdio",
                 "command": "echo"
             }),
-            apps: McpApps { claude: true, codex: false },
+            apps: McpApps {
+                claude: true,
+                codex: false,
+            },
             description: None,
             homepage: None,
             docs: None,
@@ -439,7 +448,10 @@ fn upsert_mcp_server_disabling_app_removes_from_claude_live_config() {
                 "type": "stdio",
                 "command": "echo"
             }),
-            apps: McpApps { claude: false, codex: false },
+            apps: McpApps {
+                claude: false,
+                codex: false,
+            },
             description: None,
             homepage: None,
             docs: None,
@@ -501,7 +513,6 @@ command = "echo"
     assert!(entry.apps.codex, "shared should enable Codex");
 }
 
-
 #[test]
 fn enabling_claude_mcp_skips_when_claude_config_absent() {
     use support::create_test_state;
@@ -532,7 +543,10 @@ fn enabling_claude_mcp_skips_when_claude_config_absent() {
                 "type": "stdio",
                 "command": "echo"
             }),
-            apps: McpApps { claude: false, codex: false },
+            apps: McpApps {
+                claude: false,
+                codex: false,
+            },
             description: None,
             homepage: None,
             docs: None,
@@ -587,7 +601,10 @@ fn sync_all_enabled_removes_known_disabled_but_preserves_unknown_live_entries() 
                 "type": "stdio",
                 "command": "echo"
             }),
-            apps: McpApps { claude: false, codex: false },
+            apps: McpApps {
+                claude: false,
+                codex: false,
+            },
             description: None,
             homepage: None,
             docs: None,
@@ -603,7 +620,10 @@ fn sync_all_enabled_removes_known_disabled_but_preserves_unknown_live_entries() 
                 "type": "stdio",
                 "command": "managed"
             }),
-            apps: McpApps { claude: true, codex: false },
+            apps: McpApps {
+                claude: true,
+                codex: false,
+            },
             description: None,
             homepage: None,
             docs: None,

@@ -20,8 +20,8 @@ use crate::store::AppState;
 
 // Re-export sub-module functions for external access
 pub use live::{
-    import_default_config, read_live_settings,
-    should_import_default_config_on_startup, sync_current_to_live,
+    import_default_config, read_live_settings, should_import_default_config_on_startup,
+    sync_current_to_live,
 };
 
 // Internal re-exports (pub(crate))
@@ -110,7 +110,6 @@ mod tests {
             .lock()
             .unwrap_or_else(|err| err.into_inner())
     }
-
 
     #[test]
     fn validate_provider_settings_rejects_missing_auth() {
@@ -340,7 +339,6 @@ base_url = "http://localhost:8080"
             "model override should be removed in takeover live config"
         );
     }
-
 }
 
 impl ProviderService {
@@ -379,7 +377,6 @@ impl ProviderService {
         Self::validate_provider_settings(&app_type, &provider)?;
         normalize_provider_common_config_for_storage(state.db.as_ref(), &app_type, &mut provider)?;
 
-
         // For other apps: Check if sync is needed (if this is current provider, or no current provider)
         let current = state.db.get_current_provider(app_type.as_str())?;
         if current.is_none() {
@@ -416,8 +413,6 @@ impl ProviderService {
                 "Provider key cannot be changed".to_string(),
             ));
         }
-
-
 
         // Save to database
         state.db.save_provider(app_type.as_str(), &provider)?;
@@ -489,8 +484,6 @@ impl ProviderService {
             .get(id)
             .ok_or_else(|| AppError::Message(format!("供应商 {id} 不存在")))?;
 
-
-
         let mut result = SwitchResult::default();
 
         // Backfill: Backfill current live config to current provider
@@ -511,7 +504,9 @@ impl ProviderService {
                         if let Err(e) = state.db.save_provider(app_type.as_str(), &current_provider)
                         {
                             log::warn!("Backfill failed: {e}");
-                            result.warnings.push(format!("backfill_failed:{current_id}"));
+                            result
+                                .warnings
+                                .push(format!("backfill_failed:{current_id}"));
                         }
                     }
                 }
@@ -599,8 +594,6 @@ impl ProviderService {
         state: &AppState,
         app_type: AppType,
     ) -> Result<(), AppError> {
-
-
         let Some(snippet) = state.db.get_config_snippet(app_type.as_str())? else {
             return Ok(());
         };
@@ -751,7 +744,6 @@ impl ProviderService {
         Ok(cleaned.trim().to_string())
     }
 
-
     /// Import default configuration from live files (re-export)
     ///
     /// Returns `Ok(true)` if imported, `Ok(false)` if skipped.
@@ -865,7 +857,6 @@ impl ProviderService {
         )
         .await
     }
-
 
     fn validate_provider_settings(app_type: &AppType, provider: &Provider) -> Result<(), AppError> {
         match app_type {
@@ -1226,7 +1217,6 @@ impl ProviderService {
             let codex_id = format!("universal-codex-{id}");
             let _ = state.db.delete_provider("codex", &codex_id);
         }
-
 
         Ok(true)
     }

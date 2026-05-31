@@ -803,7 +803,6 @@ mod tests {
         assert_eq!(url, "https://api.anthropic.com/v1/messages?foo=bar");
     }
 
-
     #[test]
     fn test_build_url_no_beta_for_openai_chat_completions() {
         let adapter = ClaudeAdapter::new();
@@ -947,10 +946,6 @@ mod tests {
         );
         assert!(!adapter.needs_transform(&unknown_format));
     }
-
-
-
-
 
     #[test]
     fn test_transform_claude_request_for_api_format_responses() {
