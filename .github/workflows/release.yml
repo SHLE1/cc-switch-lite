@@ -158,12 +158,7 @@ jobs:
             ONE=$(printf '%s' "$TAURI_SIGNING_PRIVATE_KEY_SECRET" | tr -d '\r\n')
             printf '%s\n%s\n' 'untrusted comment: tauri signing key' "$ONE" > "$KEY_PATH"
           fi
-
-          {
-            echo 'TAURI_SIGNING_PRIVATE_KEY<<TAURI_KEY'
-            cat "$KEY_PATH"
-            echo 'TAURI_KEY'
-          } >> "$GITHUB_ENV"
+          echo "TAURI_SIGNING_PRIVATE_KEY=$KEY_PATH" >> "$GITHUB_ENV"
           if [ -n "${TAURI_SIGNING_PRIVATE_KEY_PASSWORD_SECRET:-}" ]; then
             echo "TAURI_SIGNING_PRIVATE_KEY_PASSWORD=$TAURI_SIGNING_PRIVATE_KEY_PASSWORD_SECRET" >> "$GITHUB_ENV"
           fi
