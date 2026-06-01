@@ -21,15 +21,20 @@ pub async fn get_subscription_quota(
     tool: String,
 ) -> Result<SubscriptionQuota, String> {
     let inner = if let Some(provider_id) = provider_id.as_deref() {
-        match AppType::from_str(&tool)
-            .ok()
-            .and_then(|app_type| state.db.get_provider_by_id(provider_id, app_type.as_str()).ok().flatten())
-        {
-            Some(provider) => crate::services::subscription::get_subscription_quota_for_provider(
-                &tool,
-                &provider.settings_config,
-            )
-            .await,
+        match AppType::from_str(&tool).ok().and_then(|app_type| {
+            state
+                .db
+                .get_provider_by_id(provider_id, app_type.as_str())
+                .ok()
+                .flatten()
+        }) {
+            Some(provider) => {
+                crate::services::subscription::get_subscription_quota_for_provider(
+                    &tool,
+                    &provider.settings_config,
+                )
+                .await
+            }
             None => crate::services::subscription::get_subscription_quota(&tool).await,
         }
     } else {

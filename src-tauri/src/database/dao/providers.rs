@@ -663,7 +663,10 @@ impl Database {
         use crate::database::dao::providers_seed::OFFICIAL_SEEDS;
 
         let mut inserted = 0usize;
-        for seed in OFFICIAL_SEEDS.iter().filter(|seed| seed.app_type == app_type) {
+        for seed in OFFICIAL_SEEDS
+            .iter()
+            .filter(|seed| seed.app_type == app_type)
+        {
             if self.ensure_official_seed_by_id(seed.id, app_type.clone())? {
                 inserted += 1;
             }
@@ -813,7 +816,10 @@ mod ensure_official_seed_tests {
             .expect("codex official restored");
         assert_eq!(restored.name, "OpenAI Official");
         assert_eq!(restored.category.as_deref(), Some("official"));
-        assert_eq!(restored.website_url.as_deref(), Some("https://chatgpt.com/codex"));
+        assert_eq!(
+            restored.website_url.as_deref(),
+            Some("https://chatgpt.com/codex")
+        );
     }
 
     #[test]

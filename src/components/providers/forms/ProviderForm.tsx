@@ -146,7 +146,8 @@ const presetEntriesForApp = (appId: AppId): ProviderPresetEntry[] => {
       .map((preset, index) => ({
         id: `claude-${index}`,
         name: preset.nameKey ? preset.name : preset.name,
-        category: preset.category ?? (preset.isOfficial ? "official" : undefined),
+        category:
+          preset.category ?? (preset.isOfficial ? "official" : undefined),
         websiteUrl: preset.websiteUrl,
         settingsConfig: preset.settingsConfig as Record<string, unknown>,
         icon: preset.icon,
@@ -185,7 +186,6 @@ const applyPresetValues = (
     balanceTemplate: "auto",
   });
 };
-
 
 function patchConfig(
   currentJson: string,
@@ -301,7 +301,6 @@ export function ProviderForm({
     );
   };
 
-
   const handlePresetChange = (value: string) => {
     setSelectedPresetId(value);
     if (value === "custom") {
@@ -359,7 +358,8 @@ export function ProviderForm({
       name: values.name.trim(),
       websiteUrl: values.websiteUrl?.trim() ?? "",
       notes: values.notes?.trim() ?? "",
-      presetCategory: selectedPreset?.category ?? initialData?.category ?? "custom",
+      presetCategory:
+        selectedPreset?.category ?? initialData?.category ?? "custom",
       icon: selectedPreset?.icon ?? initialData?.icon,
       iconColor: selectedPreset?.iconColor ?? initialData?.iconColor,
       meta,
@@ -376,39 +376,46 @@ export function ProviderForm({
         className="space-y-6"
       >
         <div className="grid gap-4 sm:grid-cols-2">
-        {!initialData && presetEntries.length > 0 && (
-          <div className="space-y-3 sm:col-span-2">
-            <FormLabel>{t("providerPreset.label", { defaultValue: "供应商预设" })}</FormLabel>
-            <div className="flex flex-wrap gap-2">
-              <Button
-                type="button"
-                variant={selectedPresetId === "custom" ? "default" : "secondary"}
-                onClick={() => handlePresetChange("custom")}
-              >
-                {t("providerPreset.custom", { defaultValue: "自定义" })}
-              </Button>
-              {presetEntries.map((entry) => (
+          {!initialData && presetEntries.length > 0 && (
+            <div className="space-y-3 sm:col-span-2">
+              <FormLabel>
+                {t("providerPreset.label", { defaultValue: "供应商预设" })}
+              </FormLabel>
+              <div className="flex flex-wrap gap-2">
                 <Button
-                  key={entry.id}
                   type="button"
-                  variant={selectedPresetId === entry.id ? "default" : "secondary"}
-                  onClick={() => handlePresetChange(entry.id)}
+                  variant={
+                    selectedPresetId === "custom" ? "default" : "secondary"
+                  }
+                  onClick={() => handlePresetChange("custom")}
                 >
-                  {entry.name}
+                  {t("providerPreset.custom", { defaultValue: "自定义" })}
                 </Button>
-              ))}
+                {presetEntries.map((entry) => (
+                  <Button
+                    key={entry.id}
+                    type="button"
+                    variant={
+                      selectedPresetId === entry.id ? "default" : "secondary"
+                    }
+                    onClick={() => handlePresetChange(entry.id)}
+                  >
+                    {entry.name}
+                  </Button>
+                ))}
+              </div>
+              <p className="text-xs text-muted-foreground">
+                {selectedPreset?.category === "official"
+                  ? t("providerForm.officialHint", {
+                      defaultValue:
+                        "官方供应商使用本机登录状态，无需填写 API Key。",
+                    })
+                  : t("providerPreset.hint", {
+                      defaultValue: "选择预设后可继续调整下方字段。",
+                    })}
+              </p>
             </div>
-            <p className="text-xs text-muted-foreground">
-              {selectedPreset?.category === "official"
-                ? t("providerForm.officialHint", {
-                    defaultValue: "官方供应商使用本机登录状态，无需填写 API Key。",
-                  })
-                : t("providerPreset.hint", {
-                    defaultValue: "选择预设后可继续调整下方字段。",
-                  })}
-            </p>
-          </div>
-        )}
+          )}
 
           <FormField
             control={form.control}
