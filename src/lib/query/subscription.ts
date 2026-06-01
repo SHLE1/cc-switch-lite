@@ -21,7 +21,7 @@ export function useSubscriptionQuota(
 ) {
   return useQuery({
     queryKey: subscriptionKeys.quota(appId, scope),
-    queryFn: () => subscriptionApi.getQuota(appId),
+    queryFn: () => subscriptionApi.getQuota(appId, scope === "live" ? undefined : scope),
     enabled: enabled && ["claude", "codex"].includes(appId),
     refetchInterval: autoQuery ? REFETCH_INTERVAL : false,
     refetchIntervalInBackground: autoQuery,

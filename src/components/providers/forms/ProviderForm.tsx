@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useTranslation } from "react-i18next";
@@ -28,6 +28,18 @@ import {
   getApiKeyFromConfig,
   setCodexBaseUrl,
 } from "@/utils/providerConfigUtils";
+import { providerPresets } from "@/config/claudeProviderPresets";
+import { codexProviderPresets } from "@/config/codexProviderPresets";
+
+type ProviderPresetEntry = {
+  id: string;
+  name: string;
+  category?: ProviderCategory;
+  websiteUrl?: string;
+  settingsConfig: Record<string, unknown>;
+  icon?: string;
+  iconColor?: string;
+};
 
 export interface ProviderFormProps {
   appId: AppId;
@@ -115,6 +127,65 @@ const getCodexApiKey = (config: Record<string, unknown>): string => {
 
   return "";
 };
+const presetEntriesForApp = (appId: AppId): ProviderPresetEntry[] => {
+  if (appId === "codex") {
+    return codexProviderPresets.map((preset, index) => ({
+      id: `codex-${index}`,
+      name: preset.name,
+      category: preset.category ?? (preset.isOfficial ? "official" : undefined),
+      websiteUrl: preset.websiteUrl,
+      settingsConfig: { auth: preset.auth ?? {}, config: preset.config ?? "" },
+      icon: preset.icon,
+      iconColor: preset.iconColor,
+    }));
+  }
+
+  if (appId === "claude") {
+    return providerPresets
+      .filter((preset) => !preset.hidden)
+      .map((preset, index) => ({
+        id: `claude-${index}`,
+        name: preset.nameKey ? preset.name : preset.name,
+        category: preset.category ?? (preset.isOfficial ? "official" : undefined),
+        websiteUrl: preset.websiteUrl,
+        settingsConfig: preset.settingsConfig as Record<string, unknown>,
+        icon: preset.icon,
+        iconColor: preset.iconColor,
+      }));
+  }
+
+  return [];
+};
+
+const applyPresetValues = (
+  form: ReturnType<typeof useForm<ProviderFormData>>,
+  appId: AppId,
+  preset: ProviderPresetEntry,
+) => {
+  const settingsConfig = stringifyConfig(preset.settingsConfig);
+  form.reset({
+    name: preset.name,
+    websiteUrl: preset.websiteUrl ?? "",
+    notes: "",
+    settingsConfig,
+    authJson:
+      appId === "codex"
+        ? stringifyConfig(codexAuth(preset.settingsConfig))
+        : undefined,
+    apiKey:
+      appId === "codex"
+        ? getCodexApiKey(preset.settingsConfig)
+        : getApiKeyFromConfig(settingsConfig, appId),
+    baseUrl:
+      appId === "codex"
+        ? (extractCodexBaseUrl(codexConfigText(preset.settingsConfig)) ?? "")
+        : getClaudeBaseUrl(preset.settingsConfig),
+    model: appId === "codex" ? "" : getClaudeModel(preset.settingsConfig),
+    apiKeyField: "ANTHROPIC_AUTH_TOKEN",
+    balanceTemplate: "auto",
+  });
+};
+
 
 function patchConfig(
   currentJson: string,
@@ -179,6 +250,11 @@ export function ProviderForm({
   const initialApiKeyField =
     initialData?.meta?.apiKeyField ??
     ("ANTHROPIC_AUTH_TOKEN" as "ANTHROPIC_AUTH_TOKEN" | "ANTHROPIC_API_KEY");
+  const presetEntries = initialData ? [] : presetEntriesForApp(appId);
+  const [selectedPresetId, setSelectedPresetId] = useState("custom");
+  const selectedPreset = presetEntries.find(
+    (entry) => entry.id === selectedPresetId,
+  );
 
   const form = useForm<ProviderFormData>({
     resolver: zodResolver(providerSchema),
@@ -225,6 +301,33 @@ export function ProviderForm({
     );
   };
 
+
+  const handlePresetChange = (value: string) => {
+    setSelectedPresetId(value);
+    if (value === "custom") {
+      form.reset({
+        name: "",
+        websiteUrl: "",
+        notes: "",
+        settingsConfig: stringifyConfig(defaultConfigForApp(appId)),
+        authJson:
+          appId === "codex"
+            ? stringifyConfig(codexAuth(defaultConfigForApp(appId)))
+            : undefined,
+        apiKey: "",
+        baseUrl: "",
+        model: "",
+        apiKeyField: initialApiKeyField,
+        balanceTemplate: "auto",
+      });
+      return;
+    }
+
+    const entry = presetEntries.find((item) => item.id === value);
+    if (entry) {
+      applyPresetValues(form, appId, entry);
+    }
+  };
   const handleSubmit = async (values: ProviderFormData) => {
     const meta: ProviderMeta = {
       ...(initialData?.meta ?? {}),
@@ -256,7 +359,9 @@ export function ProviderForm({
       name: values.name.trim(),
       websiteUrl: values.websiteUrl?.trim() ?? "",
       notes: values.notes?.trim() ?? "",
-      presetCategory: initialData?.category ?? "custom",
+      presetCategory: selectedPreset?.category ?? initialData?.category ?? "custom",
+      icon: selectedPreset?.icon ?? initialData?.icon,
+      iconColor: selectedPreset?.iconColor ?? initialData?.iconColor,
       meta,
     });
   };
@@ -271,6 +376,40 @@ export function ProviderForm({
         className="space-y-6"
       >
         <div className="grid gap-4 sm:grid-cols-2">
+        {!initialData && presetEntries.length > 0 && (
+          <div className="space-y-3 sm:col-span-2">
+            <FormLabel>{t("providerPreset.label", { defaultValue: "供应商预设" })}</FormLabel>
+            <div className="flex flex-wrap gap-2">
+              <Button
+                type="button"
+                variant={selectedPresetId === "custom" ? "default" : "secondary"}
+                onClick={() => handlePresetChange("custom")}
+              >
+                {t("providerPreset.custom", { defaultValue: "自定义" })}
+              </Button>
+              {presetEntries.map((entry) => (
+                <Button
+                  key={entry.id}
+                  type="button"
+                  variant={selectedPresetId === entry.id ? "default" : "secondary"}
+                  onClick={() => handlePresetChange(entry.id)}
+                >
+                  {entry.name}
+                </Button>
+              ))}
+            </div>
+            <p className="text-xs text-muted-foreground">
+              {selectedPreset?.category === "official"
+                ? t("providerForm.officialHint", {
+                    defaultValue: "官方供应商使用本机登录状态，无需填写 API Key。",
+                  })
+                : t("providerPreset.hint", {
+                    defaultValue: "选择预设后可继续调整下方字段。",
+                  })}
+            </p>
+          </div>
+        )}
+
           <FormField
             control={form.control}
             name="name"
@@ -542,5 +681,7 @@ export function ProviderForm({
 
 export type ProviderFormValues = ProviderFormData & {
   presetCategory?: ProviderCategory;
+  icon?: string;
+  iconColor?: string;
   meta?: ProviderMeta;
 };

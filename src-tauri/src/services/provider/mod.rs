@@ -354,6 +354,7 @@ impl ProviderService {
         state: &AppState,
         app_type: AppType,
     ) -> Result<IndexMap<String, Provider>, AppError> {
+        state.db.ensure_official_seeds_for_app(app_type.clone())?;
         state.db.get_all_providers(app_type.as_str())
     }
 
@@ -375,6 +376,7 @@ impl ProviderService {
         Self::normalize_provider_if_claude(&app_type, &mut provider);
         Self::validate_provider_settings(&app_type, &provider)?;
         normalize_provider_common_config_for_storage(state.db.as_ref(), &app_type, &mut provider)?;
+        state.db.ensure_official_seeds_for_app(app_type.clone())?;
 
         state.db.save_provider(app_type.as_str(), &provider)?;
 

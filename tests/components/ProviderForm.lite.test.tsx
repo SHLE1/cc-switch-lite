@@ -50,6 +50,36 @@ describe("ProviderForm lite editor", () => {
     expect(onSubmit.mock.calls[0][0].settingsConfig).toContain("new-token");
   });
 
+
+  it("can create Codex OpenAI Official from the preset selector", async () => {
+    const user = userEvent.setup();
+    const onSubmit = vi.fn();
+
+    render(
+      <ProviderForm
+        appId="codex"
+        submitLabel="添加"
+        onSubmit={onSubmit}
+        onCancel={() => {}}
+      />,
+    );
+
+    await user.click(screen.getByRole("button", { name: "OpenAI Official" }));
+    await user.click(screen.getByRole("button", { name: "添加" }));
+
+    expect(onSubmit).toHaveBeenCalledTimes(1);
+    expect(onSubmit.mock.calls[0][0]).toMatchObject({
+      name: "OpenAI Official",
+      websiteUrl: "https://chatgpt.com/codex",
+      presetCategory: "official",
+      icon: "openai",
+      iconColor: "#00A67E",
+    });
+    expect(JSON.parse(onSubmit.mock.calls[0][0].settingsConfig)).toEqual({
+      auth: {},
+      config: "",
+    });
+  });
   it("preserves legacy usage_script while changing balance template", async () => {
     const user = userEvent.setup();
     const onSubmit = vi.fn();

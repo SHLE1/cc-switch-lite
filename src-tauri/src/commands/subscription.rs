@@ -17,9 +17,24 @@ use crate::store::AppState;
 pub async fn get_subscription_quota(
     app: tauri::AppHandle,
     state: State<'_, AppState>,
+    provider_id: Option<String>,
     tool: String,
 ) -> Result<SubscriptionQuota, String> {
-    let inner = crate::services::subscription::get_subscription_quota(&tool).await;
+    let inner = if let Some(provider_id) = provider_id.as_deref() {
+        match AppType::from_str(&tool)
+            .ok()
+            .and_then(|app_type| state.db.get_provider_by_id(provider_id, app_type.as_str()).ok().flatten())
+        {
+            Some(provider) => crate::services::subscription::get_subscription_quota_for_provider(
+                &tool,
+                &provider.settings_config,
+            )
+            .await,
+            None => crate::services::subscription::get_subscription_quota(&tool).await,
+        }
+    } else {
+        crate::services::subscription::get_subscription_quota(&tool).await
+    };
     let snapshot = match &inner {
         Ok(q) => q.clone(),
         // transport 层 Err —— 凭据状态不明，用 Valid 表达"凭据没问题，是通信/parse 出错"。

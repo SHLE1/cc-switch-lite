@@ -82,6 +82,8 @@ export function AddProviderDialog({
         websiteUrl: values.websiteUrl?.trim() || undefined,
         settingsConfig: parsedConfig,
         category: values.presetCategory ?? "custom",
+        icon: values.icon?.trim() || undefined,
+        iconColor: values.iconColor?.trim() || undefined,
         meta,
       };
 

@@ -25,7 +25,13 @@ describe("subscription quota display", () => {
     expect(screen.queryByText("72%")).not.toBeInTheDocument();
   });
 
-  it("scopes official auth quota cache by provider", () => {
+  it("scopes official auth quota cache by provider and API argument", () => {
+    expect(subscriptionKeys.quota("codex", "auth-a")).toEqual([
+      "subscription",
+      "quota",
+      "codex",
+      "auth-a",
+    ]);
     expect(subscriptionKeys.quota("codex", "auth-a")).not.toEqual(
       subscriptionKeys.quota("codex", "auth-b"),
     );

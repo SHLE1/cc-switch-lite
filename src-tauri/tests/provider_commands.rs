@@ -143,6 +143,66 @@ fn codex_startup_import_skips_when_only_official_seed_exists() {
 }
 
 #[test]
+fn codex_list_restores_deleted_official_seed() {
+    let _guard = test_mutex().lock().expect("acquire test mutex");
+    reset_test_fs();
+    let _home = ensure_test_home();
+
+    let state = create_test_state().expect("create test state");
+    state
+        .db
+        .init_default_official_providers()
+        .expect("seed official providers");
+    state
+        .db
+        .delete_provider(AppType::Codex.as_str(), "codex-official")
+        .expect("delete codex official");
+
+    let providers = ProviderService::list(&state, AppType::Codex).expect("list providers");
+
+    assert!(
+        providers.contains_key("codex-official"),
+        "listing Codex providers should restore the missing OpenAI Official entry"
+    );
+}
+
+#[test]
+fn codex_add_custom_provider_also_restores_deleted_official_seed() {
+    let _guard = test_mutex().lock().expect("acquire test mutex");
+    reset_test_fs();
+    let _home = ensure_test_home();
+
+    let state = create_test_state().expect("create test state");
+    state
+        .db
+        .init_default_official_providers()
+        .expect("seed official providers");
+    state
+        .db
+        .delete_provider(AppType::Codex.as_str(), "codex-official")
+        .expect("delete codex official");
+
+    let provider = Provider::with_id(
+        "custom-codex".to_string(),
+        "Custom Codex".to_string(),
+        json!({"auth": {"auth_mode": "apikey", "OPENAI_API_KEY": "sk-test"}, "config": ""}),
+        None,
+    );
+
+    ProviderService::add(&state, AppType::Codex, provider, true).expect("add custom provider");
+    let providers = state
+        .db
+        .get_all_providers(AppType::Codex.as_str())
+        .expect("get codex providers");
+
+    assert!(providers.contains_key("custom-codex"));
+    assert!(
+        providers.contains_key("codex-official"),
+        "adding a custom Codex provider should not leave the official recovery entry missing"
+    );
+}
+
+#[test]
 fn switch_provider_updates_codex_live_and_state() {
     let _guard = test_mutex().lock().expect("acquire test mutex");
     reset_test_fs();

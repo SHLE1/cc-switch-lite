@@ -726,6 +726,76 @@ pub(crate) async fn query_codex_quota(
 
 // ── 入口函数 ──────────────────────────────────────────────
 
+fn read_codex_credentials_from_settings(settings_config: &serde_json::Value) -> CodexCredentials {
+    let Some(auth) = settings_config.get("auth") else {
+        return (
+            None,
+            None,
+            CredentialStatus::NotFound,
+            Some("No Codex auth in provider settings".to_string()),
+        );
+    };
+
+    parse_codex_credentials_json(&auth.to_string())
+}
+
+async fn get_codex_subscription_quota_from_credentials(
+    credentials: CodexCredentials,
+) -> Result<SubscriptionQuota, String> {
+    let (token, account_id, status, message) = credentials;
+
+    match status {
+        CredentialStatus::NotFound => Ok(SubscriptionQuota::not_found("codex")),
+        CredentialStatus::ParseError => Ok(SubscriptionQuota::error(
+            "codex",
+            CredentialStatus::ParseError,
+            message.unwrap_or_else(|| "Failed to parse credentials".to_string()),
+        )),
+        CredentialStatus::Expired => {
+            if let Some(token) = token {
+                let result = query_codex_quota(
+                    &token,
+                    account_id.as_deref(),
+                    "codex",
+                    "Authentication failed. Please re-login with Codex CLI.",
+                )
+                .await;
+                if result.success {
+                    return Ok(result);
+                }
+            }
+            Ok(SubscriptionQuota::error(
+                "codex",
+                CredentialStatus::Expired,
+                message.unwrap_or_else(|| "Codex OAuth token may be stale".to_string()),
+            ))
+        }
+        CredentialStatus::Valid => {
+            let token = token.expect("token must be Some when status is Valid");
+            Ok(query_codex_quota(
+                &token,
+                account_id.as_deref(),
+                "codex",
+                "Authentication failed. Please re-login with Codex CLI.",
+            )
+            .await)
+        }
+    }
+}
+
+pub async fn get_subscription_quota_for_provider(
+    tool: &str,
+    settings_config: &serde_json::Value,
+) -> Result<SubscriptionQuota, String> {
+    match tool {
+        "codex" => {
+            let credentials = read_codex_credentials_from_settings(settings_config);
+            get_codex_subscription_quota_from_credentials(credentials).await
+        }
+        _ => get_subscription_quota(tool).await,
+    }
+}
+
 /// 查询指定 CLI 工具的官方订阅额度
 pub async fn get_subscription_quota(tool: &str) -> Result<SubscriptionQuota, String> {
     match tool {
@@ -759,53 +829,56 @@ pub async fn get_subscription_quota(tool: &str) -> Result<SubscriptionQuota, Str
                 }
             }
         }
-        "codex" => {
-            let (token, account_id, status, message) = read_codex_credentials();
-
-            match status {
-                CredentialStatus::NotFound => Ok(SubscriptionQuota::not_found("codex")),
-                CredentialStatus::ParseError => Ok(SubscriptionQuota::error(
-                    "codex",
-                    CredentialStatus::ParseError,
-                    message.unwrap_or_else(|| "Failed to parse credentials".to_string()),
-                )),
-                CredentialStatus::Expired => {
-                    // 即使可能过期也尝试调用 API
-                    if let Some(token) = token {
-                        let result = query_codex_quota(
-                            &token,
-                            account_id.as_deref(),
-                            "codex",
-                            "Authentication failed. Please re-login with Codex CLI.",
-                        )
-                        .await;
-                        if result.success {
-                            return Ok(result);
-                        }
-                    }
-                    Ok(SubscriptionQuota::error(
-                        "codex",
-                        CredentialStatus::Expired,
-                        message.unwrap_or_else(|| "Codex OAuth token may be stale".to_string()),
-                    ))
-                }
-                CredentialStatus::Valid => {
-                    let token = token.expect("token must be Some when status is Valid");
-                    Ok(query_codex_quota(
-                        &token,
-                        account_id.as_deref(),
-                        "codex",
-                        "Authentication failed. Please re-login with Codex CLI.",
-                    )
-                    .await)
-                }
-            }
-        }
+        "codex" => get_codex_subscription_quota_from_credentials(read_codex_credentials()).await,
         _ => Ok(SubscriptionQuota::not_found(tool)),
     }
 }
 
 // ── 辅助函数 ──────────────────────────────────────────────
+
+#[cfg(test)]
+mod provider_scoped_tests {
+    use super::*;
+    use serde_json::json;
+
+    #[test]
+    fn reads_codex_credentials_from_provider_settings() {
+        let credentials = read_codex_credentials_from_settings(&json!({
+            "auth": {
+                "auth_mode": "chatgpt",
+                "tokens": {
+                    "access_token": "provider-token",
+                    "account_id": "acct-provider"
+                },
+                "last_refresh": "2099-01-01T00:00:00Z"
+            },
+            "config": ""
+        }));
+
+        let (token, account_id, status, message) = credentials;
+        assert_eq!(token.as_deref(), Some("provider-token"));
+        assert_eq!(account_id.as_deref(), Some("acct-provider"));
+        assert!(matches!(status, CredentialStatus::Valid));
+        assert!(message.is_none());
+    }
+
+    #[test]
+    fn provider_scoped_codex_quota_rejects_api_key_profile() {
+        let credentials = read_codex_credentials_from_settings(&json!({
+            "auth": {
+                "auth_mode": "apikey",
+                "OPENAI_API_KEY": "sk-test"
+            },
+            "config": ""
+        }));
+
+        let (token, account_id, status, message) = credentials;
+        assert!(token.is_none());
+        assert!(account_id.is_none());
+        assert!(matches!(status, CredentialStatus::NotFound));
+        assert_eq!(message.as_deref(), Some("Codex not using OAuth mode"));
+    }
+}
 
 fn now_millis() -> i64 {
     SystemTime::now()

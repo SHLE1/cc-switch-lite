@@ -650,14 +650,28 @@ impl Database {
         Ok(inserted)
     }
 
+    /// 按应用兜底补齐 official seed（仅当目标表中对应 id 不存在时插入）。
+    ///
+    /// 官方入口是“切回原厂配置”的恢复路径；如果被旧版本或误操作删掉，
+    /// 列表读取 / 手动导入等用户主动管理动作应能把它补回来。
+    ///
+    /// 返回插入的行数。
+    pub fn ensure_official_seeds_for_app(
+        &self,
+        app_type: crate::app_config::AppType,
+    ) -> Result<usize, AppError> {
+        use crate::database::dao::providers_seed::OFFICIAL_SEEDS;
+
+        let mut inserted = 0usize;
+        for seed in OFFICIAL_SEEDS.iter().filter(|seed| seed.app_type == app_type) {
+            if self.ensure_official_seed_by_id(seed.id, app_type.clone())? {
+                inserted += 1;
+            }
+        }
+        Ok(inserted)
+    }
+
     /// 按 id 兜底插入单条 official seed（仅当目标表中该 id 不存在时插入）。
-    ///
-    /// 与 `init_default_official_providers` 不同：
-    /// - 不触碰 `official_providers_seeded` 全局 flag，是 on-demand 修复
-    /// - 只处理一条 seed，由调用方决定 id + app_type
-    /// - 已存在则尊重用户自定义，不覆盖
-    ///
-    /// 返回 Ok(true) 表示插入了新行，Ok(false) 表示已存在被跳过。
     pub fn ensure_official_seed_by_id(
         &self,
         seed_id: &str,
@@ -767,6 +781,39 @@ mod ensure_official_seed_tests {
             after.name, "My Custom Backup",
             "customization must not be overwritten"
         );
+    }
+
+    #[test]
+    fn ensure_for_app_restores_deleted_codex_official_after_global_seed_flag() {
+        let db = Database::memory().expect("memory db");
+        db.init_default_official_providers().expect("initial seed");
+        db.delete_provider(AppType::Codex.as_str(), "codex-official")
+            .expect("delete codex official");
+
+        assert!(
+            db.get_bool_flag("official_providers_seeded")
+                .expect("flag read"),
+            "fixture must match production state after first seed"
+        );
+        assert!(
+            db.get_provider_by_id("codex-official", AppType::Codex.as_str())
+                .expect("query deleted seed")
+                .is_none(),
+            "deleted official seed should be absent before repair"
+        );
+
+        let inserted = db
+            .ensure_official_seeds_for_app(AppType::Codex)
+            .expect("repair codex seeds");
+        assert_eq!(inserted, 1);
+
+        let restored = db
+            .get_provider_by_id("codex-official", AppType::Codex.as_str())
+            .expect("query restored seed")
+            .expect("codex official restored");
+        assert_eq!(restored.name, "OpenAI Official");
+        assert_eq!(restored.category.as_deref(), Some("official"));
+        assert_eq!(restored.website_url.as_deref(), Some("https://chatgpt.com/codex"));
     }
 
     #[test]
