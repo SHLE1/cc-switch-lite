@@ -342,7 +342,7 @@ jobs:
           find release-assets -maxdepth 1 -type f -print | sort
 
       - name: Upload workflow artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: release-assets-${{ matrix.platform }}
           path: release-assets/*
